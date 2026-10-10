@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Syne:wght@600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-dark: #08080a;
+  --bg-card: #121216;
+  --bg-hover: #1c1c24;
+  --border-color: #24242e;
+  --text-main: #ffffff;
+  --text-muted: #8e909e;
+  --accent-gold: #d4af37;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* Custom Typography Utility */
+.font-display {
+  font-family: 'Syne', 'Inter', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Arched Dome Container shape for categories */
+.arch-card {
+  border-top-left-radius: 140px;
+  border-top-right-radius: 140px;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+}
+
+.arch-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.05);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #08080a;
+}
+::-webkit-scrollbar-thumb {
+  background: #24242e;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #444456;
+}
+
+/* Glassmorphism Header */
+.header-glass {
+  background: rgba(8, 8, 10, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Glow effects */
+.glow-subtle {
+  box-shadow: 0 0 50px -10px rgba(255, 255, 255, 0.1);
+}
+
+/* Hide scrollbar for clean horizontal scrolling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
