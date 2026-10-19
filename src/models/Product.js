@@ -15,11 +15,33 @@ const ProductSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, 'Category is required'],
-      enum: ['oversized', 'graphic', 'essentials', 'collections', 'new-arrivals'],
+      trim: true,
+      lowercase: true,
     },
     categoryLabel: {
       type: String,
       default: 'Clothing',
+      trim: true,
+    },
+    subcategory: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    theme: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    fit: {
+      type: String,
+      trim: true,
+      default: 'Oversized Fit',
+    },
+    material: {
+      type: String,
+      trim: true,
+      default: '100% Cotton (240 GSM)',
     },
     price: {
       type: Number,

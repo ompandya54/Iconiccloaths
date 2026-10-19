@@ -18,6 +18,12 @@ const CategorySchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    subcategories: [
+      {
+        name: { type: String, required: true },
+        slug: { type: String, required: true },
+      },
+    ],
   },
   {
     timestamps: true,

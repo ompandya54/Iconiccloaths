@@ -25,6 +25,8 @@ const SHOP_PRODUCTS = [
     name: 'Minimal Logo Tee',
     fit: 'Oversized Fit',
     category: 'oversized',
+    subcategory: 'Back Print',
+    material: '100% French Terry (240 GSM)',
     price: 899,
     formattedPrice: '₹ 899',
     badge: 'BESTSELLER',
@@ -42,6 +44,8 @@ const SHOP_PRODUCTS = [
     name: 'Fallen Angel Tee',
     fit: 'Oversized Fit',
     category: 'graphic',
+    subcategory: 'Front Graphic',
+    material: 'Heavyweight Cotton (260 GSM)',
     price: 999,
     formattedPrice: '₹ 999',
     badge: 'NEW DROP',
@@ -58,6 +62,8 @@ const SHOP_PRODUCTS = [
     name: 'Chaos Tee',
     fit: 'Oversized Fit',
     category: 'oversized',
+    subcategory: 'Typography',
+    material: '100% Combed Cotton (220 GSM)',
     price: 899,
     formattedPrice: '₹ 899',
     badge: 'HOT',
@@ -74,6 +80,8 @@ const SHOP_PRODUCTS = [
     name: 'Roman Art Tee',
     fit: 'Oversized Fit',
     category: 'graphic',
+    subcategory: 'Vintage Art',
+    material: 'Heavyweight Cotton (240 GSM)',
     price: 999,
     formattedPrice: '₹ 999',
     badge: 'LIMITED',
@@ -90,6 +98,8 @@ const SHOP_PRODUCTS = [
     name: 'Mountain Mood Tee',
     fit: 'Oversized Fit',
     category: 'graphic',
+    subcategory: 'Abstract Print',
+    material: '100% Organic Cotton (220 GSM)',
     price: 899,
     formattedPrice: '₹ 899',
     badge: 'BESTSELLER',
@@ -106,6 +116,8 @@ const SHOP_PRODUCTS = [
     name: 'Dual Logo Tee',
     fit: 'Oversized Fit',
     category: 'plain',
+    subcategory: 'Solid Essentials',
+    material: 'Compact Cotton (210 GSM)',
     price: 799,
     formattedPrice: '₹ 799',
     badge: 'ESSENTIAL',
@@ -122,6 +134,8 @@ const SHOP_PRODUCTS = [
     name: 'Chaos Back Print Tee',
     fit: 'Oversized Fit',
     category: 'graphic',
+    subcategory: 'Back Print',
+    material: '100% French Terry (240 GSM)',
     price: 999,
     formattedPrice: '₹ 999',
     badge: 'NEW DROP',
@@ -138,6 +152,8 @@ const SHOP_PRODUCTS = [
     name: 'Somewhere Better Tee',
     fit: 'Oversized Fit',
     category: 'graphic',
+    subcategory: 'Front Graphic',
+    material: 'Heavyweight Cotton (260 GSM)',
     price: 999,
     formattedPrice: '₹ 999',
     badge: 'LIMITED',
@@ -157,11 +173,13 @@ export default function ShopPage() {
   
   // Filters State
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedSubcategories, setSelectedSubcategories] = useState([]);
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null);
   const [maxPrice, setMaxPrice] = useState(2999);
   const [selectedThemes, setSelectedThemes] = useState([]);
   const [selectedFits, setSelectedFits] = useState([]);
+  const [selectedMaterials, setSelectedMaterials] = useState([]);
   const [sortBy, setSortBy] = useState('latest');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
 
@@ -174,11 +192,13 @@ export default function ShopPage() {
   // Accordion Expand/Collapse States
   const [sectionsOpen, setSectionsOpen] = useState({
     category: true,
+    subcategory: true,
     size: true,
     color: true,
     price: true,
     theme: true,
-    fit: true
+    fit: true,
+    material: true
   });
 
   const toggleSection = (section) => {
@@ -217,6 +237,13 @@ export default function ShopPage() {
       result = result.filter(p => p.category === selectedCategory || (selectedCategory === 'oversized' && p.fit?.includes('Oversized')));
     }
 
+    // Subcategory Filter
+    if (selectedSubcategories.length > 0) {
+      result = result.filter(p => 
+        selectedSubcategories.some(sc => p.subcategory?.toLowerCase().includes(sc.toLowerCase()))
+      );
+    }
+
     // Size Filter
     if (selectedSize) {
       result = result.filter(p => p.sizes?.includes(selectedSize));
@@ -240,6 +267,13 @@ export default function ShopPage() {
       result = result.filter(p => selectedFits.some(f => p.fit?.toLowerCase().includes(f.toLowerCase())));
     }
 
+    // Material Filter
+    if (selectedMaterials.length > 0) {
+      result = result.filter(p => 
+        selectedMaterials.some(m => p.material?.toLowerCase().includes(m.toLowerCase()))
+      );
+    }
+
     // Sorting
     if (sortBy === 'price-low') {
       result.sort((a, b) => a.price - b.price);
@@ -250,11 +284,17 @@ export default function ShopPage() {
     }
 
     setFilteredProducts(result);
-  }, [selectedCategory, selectedSize, selectedColor, maxPrice, selectedThemes, selectedFits, sortBy, products]);
+  }, [selectedCategory, selectedSubcategories, selectedSize, selectedColor, maxPrice, selectedThemes, selectedFits, selectedMaterials, sortBy, products]);
 
   const toggleWishlist = (id) => {
     setWishlist(prev => 
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSubcategory = (subcat) => {
+    setSelectedSubcategories(prev => 
+      prev.includes(subcat) ? prev.filter(s => s !== subcat) : [...prev, subcat]
     );
   };
 
@@ -270,13 +310,21 @@ export default function ShopPage() {
     );
   };
 
+  const toggleMaterial = (mat) => {
+    setSelectedMaterials(prev => 
+      prev.includes(mat) ? prev.filter(m => m !== mat) : [...prev, mat]
+    );
+  };
+
   const clearAllFilters = () => {
     setSelectedCategory('all');
+    setSelectedSubcategories([]);
     setSelectedSize(null);
     setSelectedColor(null);
     setMaxPrice(2999);
     setSelectedThemes([]);
     setSelectedFits([]);
+    setSelectedMaterials([]);
   };
 
   return (
@@ -409,6 +457,41 @@ export default function ShopPage() {
                 )}
               </div>
 
+              {/* Subcategory Filter */}
+              <div className="border-b border-white/10 pb-6">
+                <div 
+                  onClick={() => toggleSection('subcategory')}
+                  className="flex items-center justify-between cursor-pointer font-bold uppercase tracking-widest text-neutral-200 mb-4"
+                >
+                  <span>SUBCATEGORY</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${sectionsOpen.subcategory ? 'rotate-180' : ''}`} />
+                </div>
+
+                {sectionsOpen.subcategory && (
+                  <div className="space-y-2.5 text-neutral-400">
+                    {[
+                      'Back Print',
+                      'Front Graphic',
+                      'Typography',
+                      'Solid Essentials',
+                      'Vintage Art',
+                      'Abstract Print'
+                    ].map(subcat => (
+                      <label 
+                        key={subcat} 
+                        onClick={() => toggleSubcategory(subcat)}
+                        className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors"
+                      >
+                        <div className={`w-3.5 h-3.5 border border-neutral-600 flex items-center justify-center transition-colors ${selectedSubcategories.includes(subcat) ? 'bg-white border-white' : ''}`}>
+                          {selectedSubcategories.includes(subcat) && <Check className="w-2.5 h-2.5 text-black stroke-[3]" />}
+                        </div>
+                        <span className={selectedSubcategories.includes(subcat) ? 'text-white font-medium' : ''}>{subcat}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Size Filter */}
               <div className="border-b border-white/10 pb-6">
                 <div 
@@ -535,7 +618,7 @@ export default function ShopPage() {
               </div>
 
               {/* Fit Checkboxes */}
-              <div className="pb-6">
+              <div className="border-b border-white/10 pb-6">
                 <div 
                   onClick={() => toggleSection('fit')}
                   className="flex items-center justify-between cursor-pointer font-bold uppercase tracking-widest text-neutral-200 mb-4"
@@ -562,11 +645,45 @@ export default function ShopPage() {
                 )}
               </div>
 
+              {/* Material / Fabric Checkboxes */}
+              <div className="pb-6">
+                <div 
+                  onClick={() => toggleSection('material')}
+                  className="flex items-center justify-between cursor-pointer font-bold uppercase tracking-widest text-neutral-200 mb-4"
+                >
+                  <span>MATERIAL / FABRIC</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${sectionsOpen.material ? 'rotate-180' : ''}`} />
+                </div>
+
+                {sectionsOpen.material && (
+                  <div className="space-y-2.5 text-neutral-400">
+                    {[
+                      'French Terry',
+                      'Heavyweight Cotton',
+                      'Organic Cotton',
+                      'Combed Cotton',
+                      'Compact Cotton'
+                    ].map(mat => (
+                      <label 
+                        key={mat} 
+                        onClick={() => toggleMaterial(mat)}
+                        className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors"
+                      >
+                        <div className={`w-3.5 h-3.5 border border-neutral-600 flex items-center justify-center transition-colors ${selectedMaterials.includes(mat) ? 'bg-white border-white' : ''}`}>
+                          {selectedMaterials.includes(mat) && <Check className="w-2.5 h-2.5 text-black stroke-[3]" />}
+                        </div>
+                        <span className={selectedMaterials.includes(mat) ? 'text-white font-medium' : ''}>{mat}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Reset Filters button if any active */}
-              {(selectedCategory !== 'all' || selectedSize || selectedColor || maxPrice < 2999 || selectedThemes.length > 0 || selectedFits.length > 0) && (
+              {(selectedCategory !== 'all' || selectedSubcategories.length > 0 || selectedSize || selectedColor || maxPrice < 2999 || selectedThemes.length > 0 || selectedFits.length > 0 || selectedMaterials.length > 0) && (
                 <button
                   onClick={clearAllFilters}
-                  className="w-full py-2 bg-neutral-900 border border-white/20 text-neutral-300 hover:text-white hover:border-white transition-all text-xs tracking-widest uppercase"
+                  className="w-full py-2 bg-neutral-900 border border-white/20 text-neutral-300 hover:text-white hover:border-white transition-all text-xs tracking-widest uppercase font-semibold hover:bg-neutral-800"
                 >
                   Clear Filters
                 </button>

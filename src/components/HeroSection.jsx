@@ -84,49 +84,39 @@ export default function HeroSection({ onShopClick }) {
               <ArrowRight className="w-4 h-4" />
             </a>
           </div>
-
-          {/* Slide Indicator Numbers (01 02 03) */}
-          <div className="flex items-center space-x-6 pt-6">
-            {HERO_SLIDES.map((slide, idx) => (
-              <button
-                key={slide.id}
-                onClick={() => setActiveSlide(idx)}
-                className={`text-xs font-bold transition-all relative pb-1 ${activeSlide === idx
-                    ? 'text-white border-b-2 border-white'
-                    : 'text-gray-500 hover:text-gray-300'
-                  }`}
-              >
-                {slide.id}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Bottom Right: Clean Square Thumbnail Carousel + Circular Arrow (Exact match to reference image) */}
+        {/* Bottom Right: Minimal Glowing Dash Indicators (— — —) + Circular Next Arrow */}
         <div className="flex justify-end items-center pt-8 pb-2">
-          <div className="flex items-center space-x-3">
-            {HERO_SLIDES.map((slide, idx) => (
-              <button
-                key={slide.id}
-                onClick={() => setActiveSlide(idx)}
-                className={`w-14 h-12 sm:w-16 sm:h-14 overflow-hidden cursor-pointer transition-all duration-300 ${activeSlide === idx
-                    ? 'border-2 border-white opacity-100 scale-105 shadow-lg'
-                    : 'border border-white/30 opacity-60 hover:opacity-100'
-                  }`}
-              >
-                <img
-                  src={slide.thumbnail}
-                  alt={slide.alt}
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            ))}
+          <div className="flex items-center space-x-4">
+            {/* Glowing Dash/Bar Indicators (— — —) */}
+            <div className="flex items-center space-x-2.5">
+              {HERO_SLIDES.map((slide, idx) => {
+                const isActive = activeSlide === idx;
+                return (
+                  <button
+                    key={slide.id}
+                    onClick={() => setActiveSlide(idx)}
+                    aria-label={`Go to slide ${idx + 1}`}
+                    className="group py-2 px-0.5 focus:outline-none cursor-pointer"
+                  >
+                    <span
+                      className={`block h-[3px] rounded-full transition-all duration-500 ease-out ${
+                        isActive
+                          ? 'w-9 sm:w-12 bg-white shadow-[0_0_10px_#ffffff,0_0_20px_#ffffff,0_0_30px_rgba(255,255,255,0.8)]'
+                          : 'w-4 sm:w-5 bg-white/30 group-hover:bg-white/60'
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
 
             {/* Circular Arrow Button */}
             <button
               onClick={nextSlide}
               aria-label="Next slide"
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-white/50 bg-black/40 hover:bg-white hover:text-black text-white flex items-center justify-center transition-all ml-1"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-white/50 bg-black/40 hover:bg-white hover:text-black text-white flex items-center justify-center transition-all duration-300 hover:shadow-[0_0_15px_rgba(255,255,255,0.6)] cursor-pointer"
             >
               <ChevronRight className="w-5 h-5" />
             </button>

@@ -49,11 +49,13 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ success: false, message: 'Database connection failed' }, { status: 500 });
     }
 
-    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-      return NextResponse.json({ success: false, message: 'Invalid MongoDB ID format' }, { status: 400 });
+    let updated;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      updated = await Product.findByIdAndUpdate(id, body, { new: true }).lean();
+    } else {
+      updated = await Product.findOneAndUpdate({ slug: id }, body, { new: true }).lean();
     }
 
-    const updated = await Product.findByIdAndUpdate(id, body, { new: true }).lean();
     if (!updated) {
       return NextResponse.json({ success: false, message: 'Product not found in database' }, { status: 404 });
     }
@@ -81,12 +83,14 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ success: false, message: 'Database connection failed' }, { status: 500 });
     }
 
-    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-      return NextResponse.json({ success: false, message: 'Invalid MongoDB ID format' }, { status: 400 });
+    // Find product before deleting to clean up Cloudinary images
+    let productToDelete;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      productToDelete = await Product.findById(id);
+    } else {
+      productToDelete = await Product.findOne({ slug: id });
     }
 
-    // Find product before deleting to clean up Cloudinary images
-    const productToDelete = await Product.findById(id);
     if (!productToDelete) {
       return NextResponse.json({ success: false, message: 'Product not found in database' }, { status: 404 });
     }

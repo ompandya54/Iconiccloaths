@@ -7,6 +7,15 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
+    const subcategory = searchParams.get('subcategory');
+    const size = searchParams.get('size');
+    const color = searchParams.get('color');
+    const theme = searchParams.get('theme');
+    const fit = searchParams.get('fit');
+    const material = searchParams.get('material');
+    const minPrice = searchParams.get('minPrice');
+    const maxPrice = searchParams.get('maxPrice');
+    const sort = searchParams.get('sort');
     const search = searchParams.get('search');
 
     const conn = await connectToDatabase();
@@ -21,16 +30,56 @@ export async function GET(request) {
       );
     }
 
-    // Build MongoDB Query
+    // Build MongoDB Query with comprehensive filter support
     let query = {};
     if (category && category !== 'all') {
-      query.category = category;
+      const categories = category.split(',').map((c) => c.trim().toLowerCase());
+      query.category = categories.length > 1 ? { $in: categories } : categories[0];
+    }
+    if (subcategory && subcategory !== 'all') {
+      const subcategories = subcategory.split(',').map((s) => s.trim().toLowerCase());
+      query.subcategory = subcategories.length > 1 ? { $in: subcategories } : { $regex: new RegExp(`^${subcategories[0]}$`, 'i') };
+    }
+    if (size) {
+      const sizes = size.split(',').map((s) => s.trim().toUpperCase());
+      query.sizes = { $in: sizes };
+    }
+    if (color) {
+      const colors = color.split(',').map((c) => c.trim());
+      query['colors.name'] = { $in: colors.map((c) => new RegExp(`^${c}$`, 'i')) };
+    }
+    if (theme) {
+      const themes = theme.split(',').map((t) => t.trim());
+      query.theme = { $in: themes.map((t) => new RegExp(`^${t}$`, 'i')) };
+    }
+    if (fit) {
+      const fits = fit.split(',').map((f) => f.trim());
+      query.fit = { $in: fits.map((f) => new RegExp(f, 'i')) };
+    }
+    if (material) {
+      const materials = material.split(',').map((m) => m.trim());
+      query.material = { $in: materials.map((m) => new RegExp(m, 'i')) };
+    }
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = Number(minPrice);
+      if (maxPrice) query.price.$lte = Number(maxPrice);
     }
     if (search) {
       query.name = { $regex: search, $options: 'i' };
     }
 
-    let products = await Product.find(query).sort({ createdAt: -1 }).lean();
+    // Sort order
+    let sortOptions = { createdAt: -1 };
+    if (sort === 'price-low') {
+      sortOptions = { price: 1 };
+    } else if (sort === 'price-high') {
+      sortOptions = { price: -1 };
+    } else if (sort === 'bestsellers') {
+      sortOptions = { isBestseller: -1, rating: -1 };
+    }
+
+    let products = await Product.find(query).sort(sortOptions).lean();
 
     // If MongoDB is connected but collection is empty, auto-seed default products once into MongoDB
     if ((!products || products.length === 0) && (!category || category === 'all') && !search) {
@@ -39,6 +88,10 @@ export async function GET(request) {
         slug: p.name.toLowerCase().replace(/ /g, '-'),
         category: p.category,
         categoryLabel: p.categoryLabel || 'Oversized Streetwear',
+        subcategory: p.subcategory || 'Graphic Tees',
+        theme: p.theme || 'Street',
+        fit: p.fit || 'Oversized Fit',
+        material: p.material || '100% Cotton (240 GSM)',
         price: p.price,
         originalPrice: Math.round(p.price * 1.35),
         badge: p.badge || 'BESTSELLER',
@@ -51,7 +104,7 @@ export async function GET(request) {
         description: 'Luxury heavyweight streetwear crafted from 100% organic cotton.',
       }));
       await Product.insertMany(docs);
-      products = await Product.find(query).sort({ createdAt: -1 }).lean();
+      products = await Product.find(query).sort(sortOptions).lean();
     }
 
     // Map Mongo _id to id string for frontend compatibility
@@ -97,9 +150,13 @@ export async function POST(request) {
 
     const doc = await Product.create({
       name: body.name,
-      slug: body.name.toLowerCase().replace(/ /g, '-'),
-      category: body.category,
+      slug: body.slug || body.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      category: body.category.toLowerCase(),
       categoryLabel: body.categoryLabel || body.category,
+      subcategory: body.subcategory || '',
+      theme: body.theme || body.design || '',
+      fit: body.fit || 'Oversized Fit',
+      material: body.material || '100% Cotton (240 GSM)',
       price: Number(body.price),
       originalPrice: body.originalPrice ? Number(body.originalPrice) : Math.round(Number(body.price) * 1.35),
       badge: body.badge || 'NEW DROP',

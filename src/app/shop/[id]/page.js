@@ -468,9 +468,10 @@ export default function ProductDetailPage() {
               <div className="py-4 text-neutral-400 space-y-2 leading-relaxed">
                 {activeTab === 'specs' && (
                   <ul className="space-y-1.5 list-disc list-inside text-neutral-300 text-xs font-light">
-                    <li>Fabric: 100% Super Combed Organic French Terry Cotton</li>
-                    <li>Fabric Weight: 240 GSM Heavyweight</li>
-                    <li>Fit: Oversized Drop Shoulder Boxy Cut</li>
+                    <li>Fabric: {product.material || '100% Super Combed Organic French Terry Cotton (240 GSM)'}</li>
+                    <li>Fit: {product.fit || 'Oversized Drop Shoulder Boxy Cut'}</li>
+                    {product.subcategory && <li>Style / Category: {product.subcategory}</li>}
+                    {product.theme && <li>Design / Aesthetic: {product.theme}</li>}
                     <li>Print: Premium High-Density Screen Print / Puff Print</li>
                     <li>Neckline: Ribbed High-Neck Collar</li>
                   </ul>
