@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart, ArrowRight, ChevronLeft, ChevronRight, Eye, ShoppingBag } from 'lucide-react';
+import { getBestsellers } from '@/app/api/productapi';
 
-const PRODUCTS = [
+const STATIC_PRODUCTS = [
   {
     id: 'prod-1',
     name: 'Minimal Logo Tee',
@@ -57,15 +58,19 @@ const PRODUCTS = [
 ];
 
 export default function BestsellersSection({ onAddToCart, onQuickView }) {
-  const [selectedColors, setSelectedColors] = useState({
-    'prod-1': 0,
-    'prod-2': 0,
-    'prod-3': 0,
-    'prod-4': 0,
-    'prod-5': 0,
-  });
-
+  const [productsList, setProductsList] = useState(STATIC_PRODUCTS);
+  const [selectedColors, setSelectedColors] = useState({});
   const [wishlist, setWishlist] = useState({});
+
+  useEffect(() => {
+    async function loadLiveBestsellers() {
+      const res = await getBestsellers(5);
+      if (res.success && res.products && res.products.length > 0) {
+        setProductsList(res.products);
+      }
+    }
+    loadLiveBestsellers();
+  }, []);
 
   const toggleWishlist = (id) => {
     setWishlist((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -92,7 +97,7 @@ export default function BestsellersSection({ onAddToCart, onQuickView }) {
 
           <div className="flex items-center space-x-6">
             <a
-              href="#shop"
+              href="/shop"
               className="inline-flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white transition-colors"
             >
               <span>View All</span>
@@ -118,27 +123,31 @@ export default function BestsellersSection({ onAddToCart, onQuickView }) {
 
         {/* 5 Product Cards Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
-          {PRODUCTS.map((product) => {
-            const activeColorIdx = selectedColors[product.id] || 0;
-            const activeColor = product.colors[activeColorIdx];
-            const isLiked = wishlist[product.id];
+          {productsList.map((product) => {
+            const prodKey = product.id || product._id;
+            const activeColorIdx = selectedColors[prodKey] || 0;
+            const colorsList = Array.isArray(product.colors) && product.colors.length > 0
+              ? product.colors
+              : [{ name: 'Default', hex: '#0a0a0a', image: product.image || '/images/prod_minimal.jpg' }];
+            const activeColor = colorsList[activeColorIdx] || colorsList[0];
+            const isLiked = wishlist[prodKey];
 
             return (
               <div
-                key={product.id}
+                key={prodKey}
                 className="group flex flex-col justify-between"
               >
                 {/* Product Image Container */}
                 <div className="relative aspect-[3/4] bg-[#121216] overflow-hidden border border-white/10 group-hover:border-white/30 transition-all duration-300">
                   <img
-                    src={activeColor.image}
+                    src={activeColor.image || product.image || '/images/prod_minimal.jpg'}
                     alt={product.name}
                     className="w-full h-full object-cover filter brightness-[0.95] group-hover:scale-105 transition-transform duration-500"
                   />
 
                   {/* Wishlist Heart Icon */}
                   <button
-                    onClick={() => toggleWishlist(product.id)}
+                    onClick={() => toggleWishlist(prodKey)}
                     aria-label="Add to wishlist"
                     className="absolute top-3 right-3 p-1.5 rounded-full bg-black/40 backdrop-blur-md text-white/80 hover:text-white transition-colors z-10"
                   >
@@ -173,23 +182,23 @@ export default function BestsellersSection({ onAddToCart, onQuickView }) {
                       {product.name}
                     </h3>
                     <p className="text-xs font-bold text-gray-300 mt-1">
-                      {product.formattedPrice}
+                      {product.formattedPrice || `₹${product.price}`}
                     </p>
                   </div>
 
                   {/* Swatch Selection Dots */}
                   <div className="flex items-center space-x-1.5 pt-0.5">
-                    {product.colors.map((color, idx) => (
+                    {colorsList.map((color, idx) => (
                       <button
-                        key={color.name}
-                        onClick={() => handleColorChange(product.id, idx)}
+                        key={color.name || idx}
+                        onClick={() => handleColorChange(prodKey, idx)}
                         aria-label={`Select ${color.name}`}
                         className={`w-3.5 h-3.5 rounded-full border transition-all ${
                           activeColorIdx === idx
                             ? 'ring-1 ring-white ring-offset-1 ring-offset-[#08080a] border-transparent scale-110'
                             : 'border-white/30 opacity-70 hover:opacity-100'
                         }`}
-                        style={{ backgroundColor: color.hex }}
+                        style={{ backgroundColor: color.hex || '#0a0a0a' }}
                       />
                     ))}
                   </div>

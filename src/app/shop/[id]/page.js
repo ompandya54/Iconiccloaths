@@ -8,6 +8,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import CartDrawer from '@/components/CartDrawer';
 import QuickViewModal from '@/components/QuickViewModal';
+import { getProductById, getProducts } from '@/app/api/productapi';
 import {
   Star,
   Heart,
@@ -60,8 +61,7 @@ export default function ProductDetailPage() {
     async function fetchProduct() {
       try {
         setLoading(true);
-        const res = await fetch(`/api/products/${productId}`);
-        const data = await res.json();
+        const data = await getProductById(productId);
 
         if (data.success && data.product) {
           const prod = data.product;
@@ -92,8 +92,7 @@ export default function ProductDetailPage() {
     // Fetch related products
     async function fetchRelated() {
       try {
-        const res = await fetch('/api/products');
-        const data = await res.json();
+        const data = await getProducts();
         if (data.success && data.products) {
           const filtered = data.products
             .filter((p) => (p.id || p._id) !== productId)

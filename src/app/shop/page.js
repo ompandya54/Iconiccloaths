@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import CartDrawer from '@/components/CartDrawer';
 import QuickViewModal from '@/components/QuickViewModal';
+import { getProducts } from '@/app/api/productapi';
 import {
   Heart,
   SlidersHorizontal,
@@ -205,14 +206,12 @@ export default function ShopPage() {
     setSectionsOpen((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  // Fetch Products from API Endpoint
+  // Fetch Products from Centralized API Service
   useEffect(() => {
     const fetchApiProducts = async () => {
       try {
-        const res = await fetch('/api/products');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.products && data.products.length > 0) {
+        const data = await getProducts();
+        if (data.success && data.products && data.products.length > 0) {
           const sanitizedApi = data.products.map(p => ({
             ...p,
             image: p.image || p.colors?.[0]?.image || '/images/prod_minimal.jpg'
