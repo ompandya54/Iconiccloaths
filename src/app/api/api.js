@@ -1,7 +1,7 @@
 /**
  * Central Main API Client / Endpoint Configuration
  */
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://iconic-node.onrender.com';
 
 /**
  * Universal request wrapper for all API calls
