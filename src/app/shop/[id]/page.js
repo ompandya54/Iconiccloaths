@@ -28,178 +28,6 @@ import {
   Info
 } from 'lucide-react';
 
-const FALLBACK_PRODUCTS = [
-  {
-    id: 'shop-item-1',
-    slug: 'minimal-logo-tee',
-    name: 'Minimal Logo Tee',
-    category: 'oversized',
-    categoryLabel: 'Oversized Streetwear',
-    subcategory: 'Back Print',
-    material: '100% French Terry (240 GSM)',
-    price: 899,
-    originalPrice: 1299,
-    formattedPrice: '₹ 899',
-    badge: 'BESTSELLER',
-    image: '/images/prod_minimal.jpg',
-    sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-    colors: [
-      { name: 'Black', hex: '#0a0a0a', image: '/images/prod_minimal.jpg' },
-      { name: 'White', hex: '#f5f5f7', image: '/images/prod_minimal.jpg' },
-      { name: 'Grey', hex: '#71717a', image: '/images/prod_minimal.jpg' }
-    ],
-    theme: 'Minimal',
-    description: 'Crafted from luxury 240 GSM organic terry cotton. Ultra-relaxed oversized silhouette designed for modern streetwear enthusiasts.'
-  },
-  {
-    id: 'shop-item-2',
-    slug: 'fallen-angel-tee',
-    name: 'Fallen Angel Tee',
-    category: 'graphic',
-    categoryLabel: 'Graphic Streetwear',
-    subcategory: 'Front Graphic',
-    material: 'Heavyweight Cotton (260 GSM)',
-    price: 999,
-    originalPrice: 1499,
-    formattedPrice: '₹ 999',
-    badge: 'NEW DROP',
-    image: '/images/prod_fallenangel.jpg',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    colors: [
-      { name: 'Cream', hex: '#e5e0d8', image: '/images/prod_fallenangel.jpg' },
-      { name: 'Black', hex: '#0a0a0a', image: '/images/prod_fallenangel.jpg' }
-    ],
-    theme: 'Street',
-    description: 'High-density screen printed fallen angel graphic with relaxed streetwear silhouette.'
-  },
-  {
-    id: 'shop-item-3',
-    slug: 'chaos-tee',
-    name: 'Chaos Tee',
-    category: 'oversized',
-    categoryLabel: 'Oversized Streetwear',
-    subcategory: 'Typography',
-    material: '100% Combed Cotton (220 GSM)',
-    price: 899,
-    originalPrice: 1299,
-    formattedPrice: '₹ 899',
-    badge: 'HOT',
-    image: '/images/prod_discipline.jpg',
-    sizes: ['S', 'M', 'L', 'XL'],
-    colors: [
-      { name: 'Charcoal', hex: '#27272a', image: '/images/prod_discipline.jpg' },
-      { name: 'Black', hex: '#0a0a0a', image: '/images/prod_discipline.jpg' }
-    ],
-    theme: 'Typography',
-    description: 'Heavyweight graphic chaos oversized streetwear drop with boxy fit.'
-  },
-  {
-    id: 'shop-item-4',
-    slug: 'roman-art-tee',
-    name: 'Roman Art Tee',
-    category: 'graphic',
-    categoryLabel: 'Vintage Streetwear',
-    subcategory: 'Vintage Art',
-    material: 'Heavyweight Cotton (240 GSM)',
-    price: 999,
-    originalPrice: 1499,
-    formattedPrice: '₹ 999',
-    badge: 'LIMITED',
-    image: '/images/prod_romanart.jpg',
-    sizes: ['S', 'M', 'L', 'XL'],
-    colors: [
-      { name: 'White', hex: '#f5f5f7', image: '/images/prod_romanart.jpg' },
-      { name: 'Black', hex: '#0a0a0a', image: '/images/prod_romanart.jpg' }
-    ],
-    theme: 'Vintage',
-    description: 'Vintage roman marble sculpture print with distressed wash aesthetic.'
-  },
-  {
-    id: 'shop-item-5',
-    slug: 'mountain-mood-tee',
-    name: 'Mountain Mood Tee',
-    category: 'graphic',
-    categoryLabel: 'Abstract Streetwear',
-    subcategory: 'Abstract Print',
-    material: '100% Organic Cotton (220 GSM)',
-    price: 899,
-    originalPrice: 1299,
-    formattedPrice: '₹ 899',
-    badge: 'BESTSELLER',
-    image: '/images/prod_lostintime.jpg',
-    sizes: ['M', 'L', 'XL', 'XXL'],
-    colors: [
-      { name: 'Black', hex: '#0a0a0a', image: '/images/prod_lostintime.jpg' },
-      { name: 'Cream', hex: '#e5e0d8', image: '/images/prod_lostintime.jpg' }
-    ],
-    theme: 'Abstract',
-    description: 'Subtle mountain silhouette abstract artwork on premium relaxed cotton.'
-  },
-  {
-    id: 'shop-item-6',
-    slug: 'dual-logo-tee',
-    name: 'Dual Logo Tee',
-    category: 'plain',
-    categoryLabel: 'Essential Streetwear',
-    subcategory: 'Solid Essentials',
-    material: 'Compact Cotton (210 GSM)',
-    price: 799,
-    originalPrice: 1199,
-    formattedPrice: '₹ 799',
-    badge: 'ESSENTIAL',
-    image: '/images/prod_metamorphosis.jpg',
-    sizes: ['XS', 'S', 'M', 'L', 'XL'],
-    colors: [
-      { name: 'Brown', hex: '#443a35', image: '/images/prod_metamorphosis.jpg' },
-      { name: 'Black', hex: '#0a0a0a', image: '/images/prod_metamorphosis.jpg' }
-    ],
-    theme: 'Minimal',
-    description: 'Everyday staple minimal dual logo print on compact luxury cotton.'
-  },
-  {
-    id: 'shop-item-7',
-    slug: 'chaos-back-print-tee',
-    name: 'Chaos Back Print Tee',
-    category: 'graphic',
-    categoryLabel: 'Graphic Streetwear',
-    subcategory: 'Back Print',
-    material: '100% French Terry (240 GSM)',
-    price: 999,
-    originalPrice: 1499,
-    formattedPrice: '₹ 999',
-    badge: 'NEW DROP',
-    image: '/images/prod_urbandrift.jpg',
-    sizes: ['S', 'M', 'L', 'XL'],
-    colors: [
-      { name: 'Black', hex: '#0a0a0a', image: '/images/prod_urbandrift.jpg' },
-      { name: 'Grey', hex: '#71717a', image: '/images/prod_urbandrift.jpg' }
-    ],
-    theme: 'Typography',
-    description: 'High-density back typography streetwear print on 240 GSM French Terry.'
-  },
-  {
-    id: 'shop-item-8',
-    slug: 'somewhere-better-tee',
-    name: 'Somewhere Better Tee',
-    category: 'graphic',
-    categoryLabel: 'Graphic Streetwear',
-    subcategory: 'Front Graphic',
-    material: 'Heavyweight Cotton (260 GSM)',
-    price: 999,
-    originalPrice: 1499,
-    formattedPrice: '₹ 999',
-    badge: 'LIMITED',
-    image: '/images/cat_newarrivals.jpg',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    colors: [
-      { name: 'White', hex: '#f5f5f7', image: '/images/cat_newarrivals.jpg' },
-      { name: 'Black', hex: '#0a0a0a', image: '/images/cat_newarrivals.jpg' }
-    ],
-    theme: 'Street',
-    description: 'Nostalgic streetwear aesthetic statement graphic tee.'
-  }
-];
-
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -226,7 +54,7 @@ export default function ProductDetailPage() {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [addedAnimation, setAddedAnimation] = useState(false);
 
-  // Fetch Product Data from API with local fallback
+  // Fetch Product Data from API
   useEffect(() => {
     if (!productId) return;
 
@@ -236,22 +64,9 @@ export default function ProductDetailPage() {
         setError(null);
         const data = await getProductById(productId);
 
-        let prod = (data && data.success && (data.product || data.data))
+        const prod = (data && data.success && (data.product || data.data))
           ? (data.product || data.data)
           : null;
-
-        // Fallback: Check local catalog if API did not find product
-        if (!prod) {
-          const matchSlug = productId.toLowerCase();
-          const cleanSlug = matchSlug.replace(/^shop-item-/, '');
-          prod = FALLBACK_PRODUCTS.find(
-            (p) =>
-              p.id === productId ||
-              p.slug === matchSlug ||
-              p.name.toLowerCase() === matchSlug.replace(/[-_]/g, ' ') ||
-              p.id === `shop-item-${cleanSlug}`
-          );
-        }
 
         if (prod) {
           setProduct(prod);
@@ -272,17 +87,7 @@ export default function ProductDetailPage() {
         }
       } catch (err) {
         console.error('Error fetching product:', err);
-        // On network error, check fallback
-        const matchSlug = productId.toLowerCase();
-        const fallback = FALLBACK_PRODUCTS.find(
-          (p) => p.id === productId || p.slug === matchSlug
-        );
-        if (fallback) {
-          setProduct(fallback);
-          setActiveImage(fallback.image || '/images/prod_minimal.jpg');
-        } else {
-          setError('Failed to load product details');
-        }
+        setError('Failed to load product details');
       } finally {
         setLoading(false);
       }

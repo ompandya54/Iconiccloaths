@@ -20,157 +20,10 @@ import {
   Sparkles
 } from 'lucide-react';
 
-const SHOP_PRODUCTS = [
-  {
-    id: 'shop-item-1',
-    name: 'Minimal Logo Tee',
-    fit: 'Oversized Fit',
-    category: 'oversized',
-    subcategory: 'Back Print',
-    material: '100% French Terry (240 GSM)',
-    price: 899,
-    formattedPrice: '₹ 899',
-    badge: 'BESTSELLER',
-    image: '/images/prod_minimal.jpg',
-    sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-    colors: [
-      { name: 'Black', hex: '#0a0a0a' },
-      { name: 'White', hex: '#f5f5f7' },
-      { name: 'Grey', hex: '#71717a' }
-    ],
-    theme: 'Minimal'
-  },
-  {
-    id: 'shop-item-2',
-    name: 'Fallen Angel Tee',
-    fit: 'Oversized Fit',
-    category: 'graphic',
-    subcategory: 'Front Graphic',
-    material: 'Heavyweight Cotton (260 GSM)',
-    price: 999,
-    formattedPrice: '₹ 999',
-    badge: 'NEW DROP',
-    image: '/images/prod_fallenangel.jpg',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    colors: [
-      { name: 'Cream', hex: '#e5e0d8' },
-      { name: 'Black', hex: '#0a0a0a' }
-    ],
-    theme: 'Street'
-  },
-  {
-    id: 'shop-item-3',
-    name: 'Chaos Tee',
-    fit: 'Oversized Fit',
-    category: 'oversized',
-    subcategory: 'Typography',
-    material: '100% Combed Cotton (220 GSM)',
-    price: 899,
-    formattedPrice: '₹ 899',
-    badge: 'HOT',
-    image: '/images/prod_discipline.jpg',
-    sizes: ['S', 'M', 'L', 'XL'],
-    colors: [
-      { name: 'Charcoal', hex: '#27272a' },
-      { name: 'Black', hex: '#0a0a0a' }
-    ],
-    theme: 'Typography'
-  },
-  {
-    id: 'shop-item-4',
-    name: 'Roman Art Tee',
-    fit: 'Oversized Fit',
-    category: 'graphic',
-    subcategory: 'Vintage Art',
-    material: 'Heavyweight Cotton (240 GSM)',
-    price: 999,
-    formattedPrice: '₹ 999',
-    badge: 'LIMITED',
-    image: '/images/prod_romanart.jpg',
-    sizes: ['S', 'M', 'L', 'XL'],
-    colors: [
-      { name: 'White', hex: '#f5f5f7' },
-      { name: 'Black', hex: '#0a0a0a' }
-    ],
-    theme: 'Vintage'
-  },
-  {
-    id: 'shop-item-5',
-    name: 'Mountain Mood Tee',
-    fit: 'Oversized Fit',
-    category: 'graphic',
-    subcategory: 'Abstract Print',
-    material: '100% Organic Cotton (220 GSM)',
-    price: 899,
-    formattedPrice: '₹ 899',
-    badge: 'BESTSELLER',
-    image: '/images/prod_lostintime.jpg',
-    sizes: ['M', 'L', 'XL', 'XXL'],
-    colors: [
-      { name: 'Black', hex: '#0a0a0a' },
-      { name: 'Cream', hex: '#e5e0d8' }
-    ],
-    theme: 'Abstract'
-  },
-  {
-    id: 'shop-item-6',
-    name: 'Dual Logo Tee',
-    fit: 'Oversized Fit',
-    category: 'plain',
-    subcategory: 'Solid Essentials',
-    material: 'Compact Cotton (210 GSM)',
-    price: 799,
-    formattedPrice: '₹ 799',
-    badge: 'ESSENTIAL',
-    image: '/images/prod_metamorphosis.jpg',
-    sizes: ['XS', 'S', 'M', 'L', 'XL'],
-    colors: [
-      { name: 'Brown', hex: '#443a35' },
-      { name: 'Black', hex: '#0a0a0a' }
-    ],
-    theme: 'Minimal'
-  },
-  {
-    id: 'shop-item-7',
-    name: 'Chaos Back Print Tee',
-    fit: 'Oversized Fit',
-    category: 'graphic',
-    subcategory: 'Back Print',
-    material: '100% French Terry (240 GSM)',
-    price: 999,
-    formattedPrice: '₹ 999',
-    badge: 'NEW DROP',
-    image: '/images/prod_urbandrift.jpg',
-    sizes: ['S', 'M', 'L', 'XL'],
-    colors: [
-      { name: 'Black', hex: '#0a0a0a' },
-      { name: 'Grey', hex: '#71717a' }
-    ],
-    theme: 'Typography'
-  },
-  {
-    id: 'shop-item-8',
-    name: 'Somewhere Better Tee',
-    fit: 'Oversized Fit',
-    category: 'graphic',
-    subcategory: 'Front Graphic',
-    material: 'Heavyweight Cotton (260 GSM)',
-    price: 999,
-    formattedPrice: '₹ 999',
-    badge: 'LIMITED',
-    image: '/images/cat_newarrivals.jpg',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    colors: [
-      { name: 'White', hex: '#f5f5f7' },
-      { name: 'Black', hex: '#0a0a0a' }
-    ],
-    theme: 'Street'
-  }
-];
-
 export default function ShopPage() {
-  const [products, setProducts] = useState(SHOP_PRODUCTS);
-  const [filteredProducts, setFilteredProducts] = useState(SHOP_PRODUCTS);
+  const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   // Filters State
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -210,18 +63,20 @@ export default function ShopPage() {
   useEffect(() => {
     const fetchApiProducts = async () => {
       try {
-        const data = await getProducts();
-        if (data.success && data.products && data.products.length > 0) {
-          const sanitizedApi = data.products.map(p => ({
+        setLoading(true);
+        const data = await getProducts({ limit: 50 });
+        if (data && data.success && data.products) {
+          const sanitizedApi = data.products.map((p) => ({
             ...p,
-            image: p.image || p.colors?.[0]?.image || '/images/prod_minimal.jpg'
+            image: p.image || p.colors?.[0]?.image || '/images/prod_minimal.jpg',
           }));
-          const merged = [...sanitizedApi, ...SHOP_PRODUCTS.filter(sp => !sanitizedApi.some(p => p.id === sp.id || p.name === sp.name))];
-          setProducts(merged);
-          setFilteredProducts(merged);
+          setProducts(sanitizedApi);
+          setFilteredProducts(sanitizedApi);
         }
       } catch (err) {
-        console.log('Using static products payload');
+        console.error('Error fetching products from API:', err);
+      } finally {
+        setLoading(false);
       }
     };
     fetchApiProducts();
@@ -721,7 +576,17 @@ export default function ShopPage() {
             </div>
 
             {/* Product Cards Display Grid */}
-            {filteredProducts.length === 0 ? (
+            {loading && products.length === 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="flex flex-col animate-pulse">
+                    <div className="aspect-[3/4] bg-neutral-900 border border-white/5 mb-3" />
+                    <div className="h-4 bg-neutral-800 rounded w-3/4 mb-2" />
+                    <div className="h-4 bg-neutral-800 rounded w-1/3" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredProducts.length === 0 ? (
               <div className="text-center py-20 border border-white/10 p-8">
                 <Search className="w-10 h-10 text-neutral-600 mx-auto mb-4" />
                 <h3 className="text-lg font-bold font-syne uppercase tracking-wider mb-2">No Products Found</h3>

@@ -1,72 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Heart, ArrowRight, ChevronLeft, ChevronRight, Eye, ShoppingBag } from 'lucide-react';
 import { getBestsellers } from '@/app/api/productapi';
 
-const STATIC_PRODUCTS = [
-  {
-    id: 'prod-1',
-    name: 'Minimal Logo Tee',
-    price: 999,
-    formattedPrice: '₹999',
-    colors: [
-      { name: 'Black', hex: '#0a0a0a', image: '/images/prod_minimal.jpg' },
-      { name: 'White', hex: '#f5f5f7', image: '/images/prod_metamorphosis.jpg' },
-    ]
-  },
-  {
-    id: 'prod-2',
-    name: 'Metamorphosis Tee',
-    price: 1199,
-    formattedPrice: '₹1,199',
-    colors: [
-      { name: 'White', hex: '#f5f5f7', image: '/images/prod_metamorphosis.jpg' },
-      { name: 'Black', hex: '#0a0a0a', image: '/images/prod_minimal.jpg' },
-    ]
-  },
-  {
-    id: 'prod-3',
-    name: 'Discipline Tee',
-    price: 999,
-    formattedPrice: '₹999',
-    colors: [
-      { name: 'Black', hex: '#0a0a0a', image: '/images/prod_discipline.jpg' },
-      { name: 'White', hex: '#f5f5f7', image: '/images/prod_urbandrift.jpg' },
-    ]
-  },
-  {
-    id: 'prod-4',
-    name: 'Urban Drift Tee',
-    price: 1199,
-    formattedPrice: '₹1,199',
-    colors: [
-      { name: 'White', hex: '#f5f5f7', image: '/images/prod_urbandrift.jpg' },
-      { name: 'Black', hex: '#0a0a0a', image: '/images/prod_discipline.jpg' },
-    ]
-  },
-  {
-    id: 'prod-5',
-    name: 'Lost In Time Tee',
-    price: 1199,
-    formattedPrice: '₹1,199',
-    colors: [
-      { name: 'Black', hex: '#0a0a0a', image: '/images/prod_lostintime.jpg' },
-      { name: 'White', hex: '#f5f5f7', image: '/images/prod_metamorphosis.jpg' },
-    ]
-  }
-];
-
 export default function BestsellersSection({ onAddToCart, onQuickView }) {
-  const [productsList, setProductsList] = useState(STATIC_PRODUCTS);
+  const [productsList, setProductsList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedColors, setSelectedColors] = useState({});
   const [wishlist, setWishlist] = useState({});
 
   useEffect(() => {
     async function loadLiveBestsellers() {
-      const res = await getBestsellers(5);
-      if (res.success && res.products && res.products.length > 0) {
-        setProductsList(res.products);
+      try {
+        setLoading(true);
+        const res = await getBestsellers(5);
+        if (res && res.success && res.products && res.products.length > 0) {
+          setProductsList(res.products);
+        }
+      } catch (err) {
+        console.error('Failed to load bestsellers from API:', err);
+      } finally {
+        setLoading(false);
       }
     }
     loadLiveBestsellers();
@@ -96,13 +52,13 @@ export default function BestsellersSection({ onAddToCart, onQuickView }) {
           </div>
 
           <div className="flex items-center space-x-6">
-            <a
+            <Link
               href="/shop"
               className="inline-flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white transition-colors"
             >
               <span>View All</span>
               <ArrowRight className="w-4 h-4" />
-            </a>
+            </Link>
 
             <div className="flex items-center space-x-2">
               <button
@@ -123,90 +79,106 @@ export default function BestsellersSection({ onAddToCart, onQuickView }) {
 
         {/* 5 Product Cards Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
-          {productsList.map((product) => {
-            const prodKey = product.id || product._id;
-            const activeColorIdx = selectedColors[prodKey] || 0;
-            const colorsList = Array.isArray(product.colors) && product.colors.length > 0
-              ? product.colors
-              : [{ name: 'Default', hex: '#0a0a0a', image: product.image || '/images/prod_minimal.jpg' }];
-            const activeColor = colorsList[activeColorIdx] || colorsList[0];
-            const isLiked = wishlist[prodKey];
-
-            return (
-              <div
-                key={prodKey}
-                className="group flex flex-col justify-between"
-              >
-                {/* Product Image Container */}
-                <div className="relative aspect-[3/4] bg-[#121216] overflow-hidden border border-white/10 group-hover:border-white/30 transition-all duration-300">
-                  <img
-                    src={activeColor.image || product.image || '/images/prod_minimal.jpg'}
-                    alt={product.name}
-                    className="w-full h-full object-cover filter brightness-[0.95] group-hover:scale-105 transition-transform duration-500"
-                  />
-
-                  {/* Wishlist Heart Icon */}
-                  <button
-                    onClick={() => toggleWishlist(prodKey)}
-                    aria-label="Add to wishlist"
-                    className="absolute top-3 right-3 p-1.5 rounded-full bg-black/40 backdrop-blur-md text-white/80 hover:text-white transition-colors z-10"
-                  >
-                    <Heart
-                      className={`w-4 h-4 ${isLiked ? 'fill-white text-white' : 'stroke-[1.75]'}`}
-                    />
-                  </button>
-
-                  {/* Hover Quick Action Buttons */}
-                  <div className="absolute inset-x-3 bottom-3 flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <button
-                      onClick={() => onQuickView(product)}
-                      className="flex-1 py-2 bg-black/80 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider rounded border border-white/20 hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-1"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Quick View</span>
-                    </button>
-                    <button
-                      onClick={() => onAddToCart(product, activeColor.name)}
-                      className="p-2 bg-white text-black rounded hover:bg-gray-200 transition-colors"
-                      title="Add to Cart"
-                    >
-                      <ShoppingBag className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Details Footer */}
-                <div className="pt-3 flex items-start justify-between">
-                  <div>
-                    <h3 className="text-xs font-semibold text-white tracking-wide truncate">
-                      {product.name}
-                    </h3>
-                    <p className="text-xs font-bold text-gray-300 mt-1">
-                      {product.formattedPrice || `₹${product.price}`}
-                    </p>
-                  </div>
-
-                  {/* Swatch Selection Dots */}
-                  <div className="flex items-center space-x-1.5 pt-0.5">
-                    {colorsList.map((color, idx) => (
-                      <button
-                        key={color.name || idx}
-                        onClick={() => handleColorChange(prodKey, idx)}
-                        aria-label={`Select ${color.name}`}
-                        className={`w-3.5 h-3.5 rounded-full border transition-all ${
-                          activeColorIdx === idx
-                            ? 'ring-1 ring-white ring-offset-1 ring-offset-[#08080a] border-transparent scale-110'
-                            : 'border-white/30 opacity-70 hover:opacity-100'
-                        }`}
-                        style={{ backgroundColor: color.hex || '#0a0a0a' }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
+          {loading && productsList.length === 0 ? (
+            // Skeleton Loading Placeholders
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex flex-col animate-pulse">
+                <div className="aspect-[3/4] bg-neutral-900 border border-white/5 mb-3" />
+                <div className="h-3 bg-neutral-800 rounded w-3/4 mb-2" />
+                <div className="h-3 bg-neutral-800 rounded w-1/3" />
               </div>
-            );
-          })}
+            ))
+          ) : (
+            productsList.map((product) => {
+              const prodKey = product.id || product._id;
+              const prodSlug = product.slug || prodKey;
+              const activeColorIdx = selectedColors[prodKey] || 0;
+              const colorsList = Array.isArray(product.colors) && product.colors.length > 0
+                ? product.colors
+                : [{ name: 'Default', hex: '#0a0a0a', image: product.image || '/images/prod_minimal.jpg' }];
+              const activeColor = colorsList[activeColorIdx] || colorsList[0];
+              const isLiked = wishlist[prodKey];
+
+              return (
+                <div
+                  key={prodKey}
+                  className="group flex flex-col justify-between"
+                >
+                  {/* Product Image Container */}
+                  <div className="relative aspect-[3/4] bg-[#121216] overflow-hidden border border-white/10 group-hover:border-white/30 transition-all duration-300">
+                    <Link href={`/shop/${prodSlug}`} className="block w-full h-full">
+                      <img
+                        src={activeColor.image || product.image || '/images/prod_minimal.jpg'}
+                        alt={product.name}
+                        className="w-full h-full object-cover filter brightness-[0.95] group-hover:scale-105 transition-transform duration-500"
+                      />
+                    </Link>
+
+                    {/* Wishlist Heart Icon */}
+                    <button
+                      onClick={() => toggleWishlist(prodKey)}
+                      aria-label="Add to wishlist"
+                      className="absolute top-3 right-3 p-1.5 rounded-full bg-black/40 backdrop-blur-md text-white/80 hover:text-white transition-colors z-10"
+                    >
+                      <Heart
+                        className={`w-4 h-4 ${isLiked ? 'fill-white text-white' : 'stroke-[1.75]'}`}
+                      />
+                    </button>
+
+                    {/* Hover Quick Action Buttons */}
+                    <div className="absolute inset-x-3 bottom-3 flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <button
+                        onClick={() => onQuickView && onQuickView(product)}
+                        className="flex-1 py-2 bg-black/80 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider rounded border border-white/20 hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-1"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Quick View</span>
+                      </button>
+                      <button
+                        onClick={() => onAddToCart && onAddToCart(product, activeColor.name)}
+                        className="p-2 bg-white text-black rounded hover:bg-gray-200 transition-colors"
+                        title="Add to Cart"
+                      >
+                        <ShoppingBag className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Details Footer */}
+                  <div className="pt-3 flex items-start justify-between">
+                    <div>
+                      <Link href={`/shop/${prodSlug}`}>
+                        <h3 className="text-xs font-semibold text-white tracking-wide truncate hover:underline">
+                          {product.name}
+                        </h3>
+                      </Link>
+                      <p className="text-xs font-bold text-gray-300 mt-1">
+                        {product.formattedPrice || `₹${product.price}`}
+                      </p>
+                    </div>
+
+                    {/* Swatch Selection Dots */}
+                    <div className="flex items-center space-x-1.5 pt-0.5">
+                      {colorsList.map((color, idx) => (
+                        <button
+                          key={color.name || idx}
+                          onClick={() => handleColorChange(prodKey, idx)}
+                          aria-label={`Select ${color.name}`}
+                          className={`w-3.5 h-3.5 rounded-full border transition-all ${
+                            activeColorIdx === idx
+                              ? 'ring-1 ring-white ring-offset-1 ring-offset-[#08080a] border-transparent scale-110'
+                              : 'border-white/30 opacity-70 hover:opacity-100'
+                          }`}
+                          style={{ backgroundColor: color.hex || '#0a0a0a' }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })
+          )}
         </div>
 
       </div>

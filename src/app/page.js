@@ -15,17 +15,7 @@ import QuickViewModal from '../components/QuickViewModal';
 import VideoModal from '../components/VideoModal';
 
 export default function Home() {
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 'prod-1',
-      name: 'Minimal Logo Tee',
-      price: 999,
-      selectedColor: 'Black',
-      size: 'L',
-      quantity: 1,
-      image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=600&auto=format&fit=crop'
-    }
-  ]);
+  const [cartItems, setCartItems] = useState([]);
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
