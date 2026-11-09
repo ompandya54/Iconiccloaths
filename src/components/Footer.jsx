@@ -54,6 +54,7 @@ export default function Footer() {
           <div className="md:col-span-2 space-y-3">
             <h5 className="font-bold text-white uppercase tracking-wider text-xs">SHOP</h5>
             <ul className="space-y-2 text-gray-400 text-xs">
+              <li><Link href="/collections" className="text-gray-200 hover:text-white font-medium transition-colors">Capsule Collections</Link></li>
               <li><Link href="/shop" className="hover:text-white transition-colors">Oversized Tees</Link></li>
               <li><Link href="/shop" className="hover:text-white transition-colors">Graphic Tees</Link></li>
               <li><Link href="/shop" className="hover:text-white transition-colors">Essentials</Link></li>

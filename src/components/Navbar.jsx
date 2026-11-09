@@ -87,8 +87,12 @@ export default function Navbar({ cartCount = 0, onOpenCart, onOpenSearch, active
               SHOP
             </Link>
             <Link
-              href="/#collections"
-              className="text-xs font-bold uppercase tracking-widest text-gray-300 hover:text-white transition-colors pb-1 border-b-2 border-transparent hover:border-gray-500"
+              href="/collections"
+              className={`text-xs font-bold uppercase tracking-widest pb-1 transition-colors ${
+                activePage === 'collections'
+                  ? 'text-white border-b-2 border-white'
+                  : 'text-gray-300 hover:text-white border-b-2 border-transparent hover:border-gray-500'
+              }`}
             >
               COLLECTIONS
             </Link>
@@ -204,8 +208,10 @@ export default function Navbar({ cartCount = 0, onOpenCart, onOpenSearch, active
           </Link>
           <Link
             onClick={() => setMobileMenuOpen(false)}
-            href="/#collections"
-            className="text-2xl font-bold uppercase tracking-widest text-gray-400 hover:text-white"
+            href="/collections"
+            className={`text-2xl font-bold uppercase tracking-widest ${
+              activePage === 'collections' ? 'text-white' : 'text-gray-400 hover:text-white'
+            }`}
           >
             COLLECTIONS
           </Link>
