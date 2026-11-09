@@ -11,16 +11,15 @@ import {
   Tag,
   SlidersHorizontal,
   LogOut,
-  ArrowLeft,
-  ShieldCheck,
   Lock,
-  User,
+  Mail,
   Eye,
   EyeOff,
   ArrowRight,
   AlertCircle,
   ExternalLink
 } from 'lucide-react';
+import { adminLogin, checkAdminSession } from '@/app/api/adminapi';
 
 export const AdminContext = createContext(null);
 
@@ -38,7 +37,7 @@ export default function AdminLayout({ children }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Login form state
-  const [loginUsername, setLoginUsername] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
@@ -52,19 +51,16 @@ export default function AdminLayout({ children }) {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Check auth session on mount
+  // Check auth session on mount via /api/admin/me
   useEffect(() => {
     const checkSession = async () => {
       const token = localStorage.getItem('iconic_admin_token');
       if (token) {
         try {
-          const res = await fetch('/api/admin/me', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json();
+          const data = await checkAdminSession();
           if (data && (data.authenticated || data.success)) {
             setIsAuthenticated(true);
-            setAdminUser(data.admin || { name: 'Admin', email: 'admin@iconic.com' });
+            setAdminUser(data.user || data.admin || { name: 'Admin', email: 'test@gmail.com' });
           } else {
             localStorage.removeItem('iconic_admin_token');
             setIsAuthenticated(false);
@@ -86,21 +82,22 @@ export default function AdminLayout({ children }) {
     setIsLoggingIn(true);
 
     try {
-      const res = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginUsername, password: loginPassword }),
+      const data = await adminLogin({
+        email: loginEmail.trim(),
+        username: loginEmail.trim(),
+        password: loginPassword,
       });
 
-      const data = await res.json();
-
-      if (data.success && data.token) {
-        localStorage.setItem('iconic_admin_token', data.token);
+      if (data && (data.success || data.token)) {
+        const token = data.token || data.data?.token;
+        if (token) {
+          localStorage.setItem('iconic_admin_token', token);
+        }
         setIsAuthenticated(true);
-        setAdminUser(data.user || { name: 'Admin', email: loginUsername });
+        setAdminUser(data.user || data.data || { name: 'Iconic Admin', email: loginEmail });
         showToast('Welcome back, Admin!', 'success');
       } else {
-        setLoginError(data.message || 'Invalid admin credentials');
+        setLoginError(data?.message || 'Invalid admin email or password');
       }
     } catch (err) {
       setLoginError('Server connection error. Please try again.');
@@ -109,17 +106,11 @@ export default function AdminLayout({ children }) {
     }
   };
 
-  const handleQuickFill = () => {
-    setLoginUsername('admin');
-    setLoginPassword('admin123');
-    setLoginError('');
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('iconic_admin_token');
     setIsAuthenticated(false);
     setAdminUser(null);
-    setLoginUsername('');
+    setLoginEmail('');
     setLoginPassword('');
     router.push('/admin');
   };
@@ -170,51 +161,34 @@ export default function AdminLayout({ children }) {
     );
   }
 
-  // Unauthenticated Login Screen
+  // Unauthenticated Clean & Professional Login Screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between p-4 sm:p-8 font-sans relative overflow-hidden">
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between p-6 sm:p-10 font-sans relative overflow-hidden">
+        {/* Soft Background Accents */}
         <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-100/50 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-indigo-100/40 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Top Header Logo */}
-        <div className="flex justify-between items-center relative z-10 max-w-7xl mx-auto w-full">
-          <Link href="/" className="flex items-center space-x-2.5 group">
-            <span className="w-9 h-9 rounded-xl bg-blue-600 text-white font-serif font-black flex items-center justify-center text-sm shadow-md shadow-blue-500/20">
-              IC
+        {/* Top Header Branding (Clean typography without blue IC box & without Return to Website) */}
+        <div className="flex justify-start items-center relative z-10 max-w-7xl mx-auto w-full">
+          <div className="flex flex-col">
+            <span className="font-serif text-lg font-bold tracking-[0.25em] text-slate-900 leading-none uppercase">
+              ICONIC
             </span>
-            <div className="flex flex-col">
-              <span className="font-serif text-lg font-bold tracking-[0.2em] text-slate-900 leading-none uppercase">
-                ICONIC
-              </span>
-              <span className="text-[9px] font-bold tracking-[0.3em] text-blue-600 uppercase mt-0.5">
-                CONTROL PANEL
-              </span>
-            </div>
-          </Link>
-
-          <Link
-            href="/"
-            className="text-xs font-bold text-slate-600 hover:text-blue-600 transition-colors flex items-center space-x-1"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to Website</span>
-          </Link>
+            <span className="text-[9px] font-bold tracking-[0.35em] text-blue-600 uppercase mt-1">
+              CONTROL PANEL
+            </span>
+          </div>
         </div>
 
-        {/* Login Card */}
-        <div className="relative z-10 max-w-md mx-auto w-full py-10">
-          <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-xl shadow-slate-200/50 space-y-6">
-            <div className="text-center space-y-2">
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mx-auto text-blue-600 shadow-sm">
-                <ShieldCheck className="w-7 h-7 stroke-[2]" />
-              </div>
-              <h2 className="font-sans font-black text-2xl uppercase tracking-tight text-slate-900 pt-1">
-                Admin Portal Login
+        {/* Clean Minimalist Admin Login Card */}
+        <div className="relative z-10 max-w-md mx-auto w-full py-8">
+          <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 shadow-xl shadow-slate-200/50 space-y-6">
+            {/* Header: Pure ADMIN Title */}
+            <div className="text-center pb-2">
+              <h2 className="font-sans font-black text-2xl uppercase tracking-wider text-slate-900">
+                ADMIN
               </h2>
-              <p className="text-xs text-slate-500">
-                Sign in to manage catalog, orders, and customer operations.
-              </p>
             </div>
 
             {loginError && (
@@ -225,23 +199,25 @@ export default function AdminLayout({ children }) {
             )}
 
             <form onSubmit={handleLogin} className="space-y-4 text-xs">
+              {/* Email Input */}
               <div>
                 <label className="block text-slate-700 font-bold uppercase tracking-wider mb-1.5">
-                  Username or Email
+                  Email
                 </label>
                 <div className="relative flex items-center">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3.5" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5" />
                   <input
-                    type="text"
-                    value={loginUsername}
-                    onChange={(e) => setLoginUsername(e.target.value)}
-                    placeholder="admin or admin@iconic.com"
+                    type="email"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="test@gmail.com"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all font-medium"
                     required
                   />
                 </div>
               </div>
 
+              {/* Password Input */}
               <div>
                 <label className="block text-slate-700 font-bold uppercase tracking-wider mb-1.5">
                   Password
@@ -266,10 +242,11 @@ export default function AdminLayout({ children }) {
                 </div>
               </div>
 
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoggingIn}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/25 active:scale-95 disabled:opacity-50"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/25 active:scale-95 disabled:opacity-50 mt-2"
               >
                 {isLoggingIn ? (
                   <span>Authenticating...</span>
@@ -281,22 +258,10 @@ export default function AdminLayout({ children }) {
                 )}
               </button>
             </form>
-
-            <div className="pt-4 border-t border-slate-100 text-center space-y-2">
-              <p className="text-[11px] text-slate-500">
-                Demo: <span className="text-slate-800 font-bold">admin</span> / <span className="text-slate-800 font-bold">admin123</span>
-              </p>
-              <button
-                type="button"
-                onClick={handleQuickFill}
-                className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline uppercase tracking-wider"
-              >
-                ⚡ Auto-Fill Credentials
-              </button>
-            </div>
           </div>
         </div>
 
+        {/* Footer */}
         <div className="text-center text-[11px] text-slate-400 relative z-10">
           © {new Date().getFullYear()} ICONIC CLOTHS. Enterprise Cloud Architecture.
         </div>
@@ -406,7 +371,7 @@ export default function AdminLayout({ children }) {
           </div>
         </aside>
 
-        {/* Dynamic Nested Content Area */}
+        {/* Dynamic Content Area */}
         <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50 relative">
           {children}
         </main>
@@ -414,4 +379,3 @@ export default function AdminLayout({ children }) {
     </AdminContext.Provider>
   );
 }
-
