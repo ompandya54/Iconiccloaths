@@ -24,7 +24,7 @@ export default function ShopPage() {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Filters State
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSubcategories, setSelectedSubcategories] = useState([]);
@@ -93,7 +93,7 @@ export default function ShopPage() {
 
     // Subcategory Filter
     if (selectedSubcategories.length > 0) {
-      result = result.filter(p => 
+      result = result.filter(p =>
         selectedSubcategories.some(sc => p.subcategory?.toLowerCase().includes(sc.toLowerCase()))
       );
     }
@@ -123,7 +123,7 @@ export default function ShopPage() {
 
     // Material Filter
     if (selectedMaterials.length > 0) {
-      result = result.filter(p => 
+      result = result.filter(p =>
         selectedMaterials.some(m => p.material?.toLowerCase().includes(m.toLowerCase()))
       );
     }
@@ -141,31 +141,31 @@ export default function ShopPage() {
   }, [selectedCategory, selectedSubcategories, selectedSize, selectedColor, maxPrice, selectedThemes, selectedFits, selectedMaterials, sortBy, products]);
 
   const toggleWishlist = (id) => {
-    setWishlist(prev => 
+    setWishlist(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
   };
 
   const toggleSubcategory = (subcat) => {
-    setSelectedSubcategories(prev => 
+    setSelectedSubcategories(prev =>
       prev.includes(subcat) ? prev.filter(s => s !== subcat) : [...prev, subcat]
     );
   };
 
   const toggleTheme = (theme) => {
-    setSelectedThemes(prev => 
+    setSelectedThemes(prev =>
       prev.includes(theme) ? prev.filter(t => t !== theme) : [...prev, theme]
     );
   };
 
   const toggleFit = (fit) => {
-    setSelectedFits(prev => 
+    setSelectedFits(prev =>
       prev.includes(fit) ? prev.filter(f => f !== fit) : [...prev, fit]
     );
   };
 
   const toggleMaterial = (mat) => {
-    setSelectedMaterials(prev => 
+    setSelectedMaterials(prev =>
       prev.includes(mat) ? prev.filter(m => m !== mat) : [...prev, mat]
     );
   };
@@ -186,13 +186,13 @@ export default function ShopPage() {
       <Navbar cartCount={0} onOpenCart={() => setCartOpen(true)} />
 
       <main className="pt-24 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Sleek Hero Banner Container */}
         <div className="relative w-full h-[240px] sm:h-[280px] lg:h-[300px] bg-[#08080a] overflow-hidden mb-10 group">
-          
+
           {/* Full Width Image (Positioned to Right) */}
           <div className="absolute inset-0 w-full h-full">
-            <Image 
+            <Image
               src="/images/shop_banner.jpg"
               alt="Wear Your Story Banner"
               fill
@@ -203,7 +203,7 @@ export default function ShopPage() {
 
           {/* Left Black Gradient Overlay (Fades image to solid black on the left) */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#08080a] via-[#08080a]/90 via-55% to-transparent z-0"></div>
-          
+
           {/* Top/Bottom Vignette */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#08080a]/80 via-transparent to-black/30 pointer-events-none z-0"></div>
 
@@ -218,7 +218,7 @@ export default function ShopPage() {
 
             {/* Bottom Row: Left SHOP Title & Right Accent */}
             <div className="flex items-end justify-between">
-              
+
               {/* Left Title & Tagline */}
               <div>
                 <div className="w-10 h-0.5 bg-white/60 mb-3"></div>
@@ -234,7 +234,7 @@ export default function ShopPage() {
               <div className="text-right hidden sm:flex flex-col items-end mb-1">
                 <div className="w-6 h-px bg-white/40 mb-1.5"></div>
                 <h2 className="text-2xs font-light tracking-[0.25em] text-neutral-300 uppercase leading-tight font-syne">
-                  WEAR<br/>YOUR<br/><span className="font-bold text-white tracking-[0.25em]">STORY.</span>
+                  WEAR<br />YOUR<br /><span className="font-bold text-white tracking-[0.25em]">STORY.</span>
                 </h2>
                 <div className="w-6 h-px bg-white/40 mt-1.5"></div>
               </div>
@@ -245,7 +245,7 @@ export default function ShopPage() {
 
         {/* Main Content Layout: Sidebar + Product Grid */}
         <div className="flex flex-col lg:flex-row gap-8">
-          
+
           {/* Mobile Filter Toggle Button */}
           <button
             onClick={() => setMobileFiltersOpen(true)}
@@ -272,17 +272,17 @@ export default function ShopPage() {
             </div>
 
             <div className="space-y-8 text-xs tracking-wider">
-              
+
               {/* Category Filter */}
               <div className="border-b border-white/10 pb-6">
-                <div 
+                <div
                   onClick={() => toggleSection('category')}
                   className="flex items-center justify-between cursor-pointer font-bold uppercase tracking-widest text-neutral-200 mb-4"
                 >
                   <span>CATEGORY</span>
                   <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${sectionsOpen.category ? 'rotate-180' : ''}`} />
                 </div>
-                
+
                 {sectionsOpen.category && (
                   <div className="space-y-2.5 text-neutral-400">
                     {[
@@ -293,8 +293,8 @@ export default function ShopPage() {
                       { id: 'fullsleeve', label: 'Full Sleeve Tees', count: 12 },
                       { id: 'polo', label: 'Polo T-shirts', count: 10 }
                     ].map(cat => (
-                      <label 
-                        key={cat.id} 
+                      <label
+                        key={cat.id}
                         onClick={() => setSelectedCategory(cat.id)}
                         className="flex items-center justify-between cursor-pointer hover:text-white transition-colors group"
                       >
@@ -313,7 +313,7 @@ export default function ShopPage() {
 
               {/* Subcategory Filter */}
               <div className="border-b border-white/10 pb-6">
-                <div 
+                <div
                   onClick={() => toggleSection('subcategory')}
                   className="flex items-center justify-between cursor-pointer font-bold uppercase tracking-widest text-neutral-200 mb-4"
                 >
@@ -331,8 +331,8 @@ export default function ShopPage() {
                       'Vintage Art',
                       'Abstract Print'
                     ].map(subcat => (
-                      <label 
-                        key={subcat} 
+                      <label
+                        key={subcat}
                         onClick={() => toggleSubcategory(subcat)}
                         className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors"
                       >
@@ -348,7 +348,7 @@ export default function ShopPage() {
 
               {/* Size Filter */}
               <div className="border-b border-white/10 pb-6">
-                <div 
+                <div
                   onClick={() => toggleSection('size')}
                   className="flex items-center justify-between cursor-pointer font-bold uppercase tracking-widest text-neutral-200 mb-4"
                 >
@@ -362,11 +362,10 @@ export default function ShopPage() {
                       <button
                         key={sz}
                         onClick={() => setSelectedSize(selectedSize === sz ? null : sz)}
-                        className={`h-8 border flex items-center justify-center font-medium transition-all text-2xs ${
-                          selectedSize === sz 
-                            ? 'bg-white text-black border-white' 
+                        className={`h-8 border flex items-center justify-center font-medium transition-all text-2xs ${selectedSize === sz
+                            ? 'bg-white text-black border-white'
                             : 'border-white/15 text-neutral-300 hover:border-white/50'
-                        }`}
+                          }`}
                       >
                         {sz}
                       </button>
@@ -377,7 +376,7 @@ export default function ShopPage() {
 
               {/* Color Filter */}
               <div className="border-b border-white/10 pb-6">
-                <div 
+                <div
                   onClick={() => toggleSection('color')}
                   className="flex items-center justify-between cursor-pointer font-bold uppercase tracking-widest text-neutral-200 mb-4"
                 >
@@ -398,9 +397,8 @@ export default function ShopPage() {
                       <button
                         key={clr.name}
                         onClick={() => setSelectedColor(selectedColor === clr.name ? null : clr.name)}
-                        className={`w-6 h-6 rounded-full border border-neutral-700 flex items-center justify-center transition-all ${
-                          selectedColor === clr.name ? 'ring-2 ring-white ring-offset-2 ring-offset-black scale-110' : 'hover:scale-110'
-                        }`}
+                        className={`w-6 h-6 rounded-full border border-neutral-700 flex items-center justify-center transition-all ${selectedColor === clr.name ? 'ring-2 ring-white ring-offset-2 ring-offset-black scale-110' : 'hover:scale-110'
+                          }`}
                         style={{ backgroundColor: clr.hex }}
                         title={clr.name}
                       >
@@ -413,7 +411,7 @@ export default function ShopPage() {
 
               {/* Price Filter Slider */}
               <div className="border-b border-white/10 pb-6">
-                <div 
+                <div
                   onClick={() => toggleSection('price')}
                   className="flex items-center justify-between cursor-pointer font-bold uppercase tracking-widest text-neutral-200 mb-4"
                 >
@@ -423,10 +421,10 @@ export default function ShopPage() {
 
                 {sectionsOpen.price && (
                   <div className="space-y-3">
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="2999" 
+                    <input
+                      type="range"
+                      min="0"
+                      max="2999"
                       step="100"
                       value={maxPrice}
                       onChange={(e) => setMaxPrice(Number(e.target.value))}
@@ -442,7 +440,7 @@ export default function ShopPage() {
 
               {/* Design / Theme Checkboxes */}
               <div className="border-b border-white/10 pb-6">
-                <div 
+                <div
                   onClick={() => toggleSection('theme')}
                   className="flex items-center justify-between cursor-pointer font-bold uppercase tracking-widest text-neutral-200 mb-4"
                 >
@@ -453,8 +451,8 @@ export default function ShopPage() {
                 {sectionsOpen.theme && (
                   <div className="space-y-2.5 text-neutral-400">
                     {['Typography', 'Anime', 'Abstract', 'Minimal', 'Vintage', 'Street'].map(thm => (
-                      <label 
-                        key={thm} 
+                      <label
+                        key={thm}
                         onClick={() => toggleTheme(thm)}
                         className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors"
                       >
@@ -473,7 +471,7 @@ export default function ShopPage() {
 
               {/* Fit Checkboxes */}
               <div className="border-b border-white/10 pb-6">
-                <div 
+                <div
                   onClick={() => toggleSection('fit')}
                   className="flex items-center justify-between cursor-pointer font-bold uppercase tracking-widest text-neutral-200 mb-4"
                 >
@@ -484,8 +482,8 @@ export default function ShopPage() {
                 {sectionsOpen.fit && (
                   <div className="space-y-2.5 text-neutral-400">
                     {['Oversized', 'Regular', 'Slim'].map(fit => (
-                      <label 
-                        key={fit} 
+                      <label
+                        key={fit}
                         onClick={() => toggleFit(fit)}
                         className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors"
                       >
@@ -501,7 +499,7 @@ export default function ShopPage() {
 
               {/* Material / Fabric Checkboxes */}
               <div className="pb-6">
-                <div 
+                <div
                   onClick={() => toggleSection('material')}
                   className="flex items-center justify-between cursor-pointer font-bold uppercase tracking-widest text-neutral-200 mb-4"
                 >
@@ -518,8 +516,8 @@ export default function ShopPage() {
                       'Combed Cotton',
                       'Compact Cotton'
                     ].map(mat => (
-                      <label 
-                        key={mat} 
+                      <label
+                        key={mat}
                         onClick={() => toggleMaterial(mat)}
                         className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors"
                       >
@@ -548,7 +546,7 @@ export default function ShopPage() {
 
           {/* Right Product Grid Area */}
           <div className="flex-1">
-            
+
             {/* Top Controls Bar above Grid */}
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
               <span className="text-xs uppercase tracking-widest font-bold text-neutral-300 font-syne">
@@ -627,11 +625,10 @@ export default function ShopPage() {
                           className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform"
                         >
                           <Heart
-                            className={`w-4 h-4 transition-colors ${
-                              wishlist.includes(prod.id || prod._id)
+                            className={`w-4 h-4 transition-colors ${wishlist.includes(prod.id || prod._id)
                                 ? 'fill-red-500 text-red-500'
                                 : 'text-neutral-300 hover:text-white'
-                            }`}
+                              }`}
                           />
                         </button>
 
@@ -642,7 +639,7 @@ export default function ShopPage() {
                         <div>
                           {/* Title & Price Inline */}
                           <div className="flex items-start justify-between gap-2 mb-1">
-                            <Link 
+                            <Link
                               href={`/shop/${targetId}`}
                               className="text-sm font-semibold tracking-wide text-neutral-100 group-hover:text-white transition-colors truncate"
                             >
@@ -653,27 +650,27 @@ export default function ShopPage() {
                             </span>
                           </div>
 
-                        {/* Fit Label */}
-                        <p className="text-2xs text-neutral-400 font-light mb-2.5">
-                          {prod.fit || 'Oversized Fit'}
-                        </p>
-                      </div>
+                          {/* Fit Label */}
+                          <p className="text-2xs text-neutral-400 font-light mb-2.5">
+                            {prod.fit || 'Oversized Fit'}
+                          </p>
+                        </div>
 
-                      {/* Color Variant Dots */}
-                      <div className="flex items-center gap-1.5">
-                        {prod.colors?.map((clr, idx) => (
-                          <span
-                            key={idx}
-                            className="w-2.5 h-2.5 rounded-full border border-neutral-700"
-                            style={{ backgroundColor: clr.hex }}
-                            title={clr.name}
-                          ></span>
-                        ))}
+                        {/* Color Variant Dots */}
+                        <div className="flex items-center gap-1.5">
+                          {prod.colors?.map((clr, idx) => (
+                            <span
+                              key={idx}
+                              className="w-2.5 h-2.5 rounded-full border border-neutral-700"
+                              style={{ backgroundColor: clr.hex }}
+                              title={clr.name}
+                            ></span>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
               </div>
             )}
           </div>
