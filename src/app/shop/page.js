@@ -736,7 +736,7 @@ export default function ShopPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8">
                 {filteredProducts.map((prod, idx) => {
-                  const targetId = prod.id || prod._id || prod.slug || `shop-item-${idx}`;
+                  const targetId = prod.slug || prod._id || prod.id || `shop-item-${idx}`;
                   return (
                     <div
                       key={targetId}
