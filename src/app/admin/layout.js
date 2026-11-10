@@ -92,6 +92,7 @@ export default function AdminLayout({ children }) {
         const token = data.token || data.data?.token;
         if (token) {
           localStorage.setItem('iconic_admin_token', token);
+          document.cookie = `admin_token=${token}; path=/; max-age=604800; SameSite=Lax`;
         }
         setIsAuthenticated(true);
         setAdminUser(data.user || data.data || { name: 'Iconic Admin', email: loginEmail });
@@ -108,6 +109,7 @@ export default function AdminLayout({ children }) {
 
   const handleLogout = () => {
     localStorage.removeItem('iconic_admin_token');
+    document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     setIsAuthenticated(false);
     setAdminUser(null);
     setLoginEmail('');

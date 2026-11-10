@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { adminMiddleware } from '@/middlewares/adminMiddleware';
 import { apiMiddleware } from '@/middlewares/apiMiddleware';
 import { userMiddleware } from '@/middlewares/userMiddleware';
 
@@ -18,9 +17,9 @@ export async function middleware(request) {
     return NextResponse.next();
   }
 
-  // 2. Dispatch Admin requests to adminMiddleware
-  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin') || pathname.startsWith('/api/seed')) {
-    return await adminMiddleware(request);
+  // 2. Admin pages: Let App Router layout.js handle client-side authentication guard
+  if (pathname.startsWith('/admin')) {
+    return NextResponse.next();
   }
 
   // 3. Dispatch API requests to apiMiddleware
