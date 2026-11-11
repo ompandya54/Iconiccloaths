@@ -19,12 +19,9 @@ import {
   ShieldCheck,
   Star
 } from 'lucide-react';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import CartDrawer from '@/components/CartDrawer';
-import SearchModal from '@/components/SearchModal';
 import QuickViewModal from '@/components/QuickViewModal';
 import { getProducts } from '@/app/api/productapi';
+import { useCart } from '@/context/CartContext';
 
 // Curated Signature Capsule Drops
 const CAPSULE_DROPS = [
@@ -142,14 +139,10 @@ const THEME_MOODS = [
 ];
 
 export default function CollectionsPage() {
+  const { addToCart } = useCart();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTheme, setSelectedTheme] = useState('all');
-
-  // Cart & UI Modals
-  const [cartItems, setCartItems] = useState([]);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
   // Email Newsletter state
@@ -173,92 +166,20 @@ export default function CollectionsPage() {
     loadProducts();
   }, []);
 
-  // Cart Handlers
-  const handleAddToCart = (product, selectedColor, size = 'L') => {
-    const colorObj = product.colors?.[0] || { name: 'Standard', image: product.image };
-    setCartItems((prev) => {
-      const existingIdx = prev.findIndex(
-        (item) => item.id === (product.id || product._id) && item.selectedColor === (selectedColor || colorObj.name)
-      );
-      if (existingIdx > -1) {
-        const updated = [...prev];
-        updated[existingIdx].quantity += 1;
-        return updated;
-      }
-      return [
-        ...prev,
-        {
-          id: product.id || product._id,
-          name: product.name,
-          price: product.price,
-          selectedColor: selectedColor || colorObj.name,
-          size: size,
-          quantity: 1,
-          image: colorObj.image || product.image,
-        },
-      ];
-    });
-    setCartOpen(true);
-  };
-
-  const handleUpdateQuantity = (id, selectedColor, newQty) => {
-    if (newQty <= 0) {
-      setCartItems((prev) =>
-        prev.filter((i) => !(i.id === id && i.selectedColor === selectedColor))
-      );
-      return;
-    }
-    setCartItems((prev) =>
-      prev.map((i) =>
-        i.id === id && i.selectedColor === selectedColor ? { ...i, quantity: newQty } : i
-      )
-    );
-  };
-
-  const handleRemoveItem = (id, selectedColor) => {
-    setCartItems((prev) =>
-      prev.filter((i) => !(i.id === id && i.selectedColor === selectedColor))
-    );
-  };
-
   // Filtered products for the interactive moodboard
   const filteredProducts = products.filter((p) => {
     if (selectedTheme === 'all') return true;
     return p.theme?.toLowerCase().includes(selectedTheme.toLowerCase());
   });
 
-  const cartCount = cartItems.reduce((acc, curr) => acc + curr.quantity, 0);
-
   return (
     <div className="min-h-screen bg-[#08080a] text-white font-sans antialiased selection:bg-white selection:text-black">
-      {/* Sticky Top Navbar */}
-      <Navbar
-        activePage="collections"
-        cartCount={cartCount}
-        onOpenCart={() => setCartOpen(true)}
-        onOpenSearch={() => setSearchOpen(true)}
-      />
-
-      {/* Cart Drawer & Search Modal */}
-      <CartDrawer
-        isOpen={cartOpen}
-        onClose={() => setCartOpen(false)}
-        items={cartItems}
-        onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveItem}
-      />
-
-      <SearchModal
-        isOpen={searchOpen}
-        onClose={() => setSearchOpen(false)}
-      />
-
       {quickViewProduct && (
         <QuickViewModal
           product={quickViewProduct}
           isOpen={Boolean(quickViewProduct)}
           onClose={() => setQuickViewProduct(null)}
-          onAddToCart={handleAddToCart}
+          onAddToCart={addToCart}
         />
       )}
 
@@ -751,9 +672,6 @@ export default function CollectionsPage() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <Footer />
     </div>
   );
 }

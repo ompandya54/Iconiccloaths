@@ -3,11 +3,9 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import CartDrawer from '@/components/CartDrawer';
 import QuickViewModal from '@/components/QuickViewModal';
 import { getProducts } from '@/app/api/productapi';
+import { useCart } from '@/context/CartContext';
 import {
   Heart,
   SlidersHorizontal,
@@ -17,10 +15,13 @@ import {
   Check,
   X,
   Search,
-  Sparkles
+  Sparkles,
+  ShoppingBag,
+  Eye
 } from 'lucide-react';
 
 export default function ShopPage() {
+  const { addToCart } = useCart();
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +40,6 @@ export default function ShopPage() {
 
   // Modals & Drawers
   const [wishlist, setWishlist] = useState([]);
-  const [cartOpen, setCartOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
@@ -183,9 +183,7 @@ export default function ShopPage() {
 
   return (
     <div className="bg-[#08080a] text-white min-h-screen selection:bg-white selection:text-black font-sans">
-      <Navbar cartCount={0} onOpenCart={() => setCartOpen(true)} />
-
-      <main className="pt-24 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="pt-24 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Sleek Hero Banner Container */}
         <div className="relative w-full h-[240px] sm:h-[280px] lg:h-[300px] bg-[#08080a] overflow-hidden mb-10 group">
@@ -632,6 +630,32 @@ export default function ShopPage() {
                           />
                         </button>
 
+                        {/* Quick Action Overlay on Hover */}
+                        <div className="absolute bottom-3 inset-x-3 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              addToCart(prod, prod.colors?.[0]?.name, 'L', 1);
+                            }}
+                            className="flex-1 py-2.5 bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-neutral-200 transition-colors shadow-lg flex items-center justify-center gap-1.5 active:scale-95"
+                          >
+                            <ShoppingBag className="w-3.5 h-3.5" />
+                            <span>Add to Bag</span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setQuickViewProduct(prod);
+                            }}
+                            className="p-2.5 bg-black/80 backdrop-blur-md text-white border border-white/20 hover:bg-white hover:text-black transition-colors"
+                            title="Quick View"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
                       </div>
 
                       {/* Info Area below Product Card */}
@@ -676,22 +700,17 @@ export default function ShopPage() {
           </div>
         </div>
 
-      </main>
+      </div>
 
       {/* Quick View Modal */}
       <QuickViewModal
         product={quickViewProduct}
         onClose={() => setQuickViewProduct(null)}
-        onAddToCart={() => {
-          setCartOpen(true);
+        onAddToCart={(prod, clr, sz, qty) => {
+          addToCart(prod, clr, sz, qty);
           setQuickViewProduct(null);
         }}
       />
-
-      {/* Slide-over Cart Drawer */}
-      <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
-
-      <Footer />
     </div>
   );
 }

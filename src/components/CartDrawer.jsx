@@ -1,8 +1,28 @@
 'use client';
 
 import { X, Trash2, ArrowRight, ShoppingBag } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
 
-export default function CartDrawer({ isOpen, onClose, cartItems = [], onUpdateQuantity, onRemoveItem }) {
+export default function CartDrawer({
+  isOpen: propIsOpen,
+  onClose: propOnClose,
+  cartItems: propCartItems,
+  onUpdateQuantity: propOnUpdateQuantity,
+  onRemoveItem: propOnRemoveItem,
+}) {
+  let cartCtx = null;
+  try {
+    cartCtx = useCart();
+  } catch (e) {
+    // Graceful fallback if outside CartProvider
+  }
+
+  const isOpen = propIsOpen !== undefined ? propIsOpen : (cartCtx?.isCartOpen ?? false);
+  const onClose = propOnClose || cartCtx?.closeCart;
+  const cartItems = propCartItems || cartCtx?.cartItems || [];
+  const onUpdateQuantity = propOnUpdateQuantity || cartCtx?.updateQuantity;
+  const onRemoveItem = propOnRemoveItem || cartCtx?.removeFromCart;
+
   if (!isOpen) return null;
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -86,14 +106,14 @@ export default function CartDrawer({ isOpen, onClose, cartItems = [], onUpdateQu
                     {/* Quantity Controls */}
                     <div className="flex items-center space-x-3 mt-2">
                       <button
-                        onClick={() => onUpdateQuantity(item.id, item.selectedColor, item.quantity - 1)}
+                        onClick={() => onUpdateQuantity && onUpdateQuantity(item.id, item.selectedColor, item.size, item.quantity - 1)}
                         className="w-5 h-5 rounded bg-white/10 text-white flex items-center justify-center text-xs hover:bg-white/20"
                       >
                         -
                       </button>
                       <span className="text-xs font-bold text-white">{item.quantity}</span>
                       <button
-                        onClick={() => onUpdateQuantity(item.id, item.selectedColor, item.quantity + 1)}
+                        onClick={() => onUpdateQuantity && onUpdateQuantity(item.id, item.selectedColor, item.size, item.quantity + 1)}
                         className="w-5 h-5 rounded bg-white/10 text-white flex items-center justify-center text-xs hover:bg-white/20"
                       >
                         +
@@ -102,7 +122,7 @@ export default function CartDrawer({ isOpen, onClose, cartItems = [], onUpdateQu
                   </div>
 
                   <button
-                    onClick={() => onRemoveItem(item.id, item.selectedColor)}
+                    onClick={() => onRemoveItem && onRemoveItem(item.id, item.selectedColor, item.size)}
                     className="text-gray-500 hover:text-red-400 transition-colors p-1"
                   >
                     <Trash2 className="w-4 h-4" />

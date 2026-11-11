@@ -4,11 +4,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import CartDrawer from '@/components/CartDrawer';
 import QuickViewModal from '@/components/QuickViewModal';
 import { getProductById, getProducts } from '@/app/api/productapi';
+import { useCart } from '@/context/CartContext';
 import {
   Star,
   Heart,
@@ -29,6 +27,7 @@ import {
 } from 'lucide-react';
 
 export default function ProductDetailPage() {
+  const { addToCart, openCart } = useCart();
   const params = useParams();
   const router = useRouter();
   const productId = params?.id;
@@ -49,7 +48,6 @@ export default function ProductDetailPage() {
   const [activeTab, setActiveTab] = useState('specs');
 
   // Modals & Drawers
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSizeChartOpen, setIsSizeChartOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [addedAnimation, setAddedAnimation] = useState(false);
@@ -115,58 +113,23 @@ export default function ProductDetailPage() {
   // Cart Add Handler
   const handleAddToCart = () => {
     if (!product) return;
-
-    const cartItem = {
-      id: product.id || product._id,
-      name: product.name,
-      price: product.price,
-      image: activeImage || product.image || '/images/prod_minimal.jpg',
-      size: selectedSize,
-      color: selectedColor?.name || 'Default',
-      quantity: quantity
-    };
-
-    // Store in localStorage cart
-    try {
-      const existingCart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const existingIndex = existingCart.findIndex(
-        (item) => item.id === cartItem.id && item.size === cartItem.size && item.color === cartItem.color
-      );
-
-      if (existingIndex > -1) {
-        existingCart[existingIndex].quantity += cartItem.quantity;
-      } else {
-        existingCart.push(cartItem);
-      }
-
-      localStorage.setItem('cart', JSON.stringify(existingCart));
-      
-      // Trigger cart event for navbar/drawer update
-      window.dispatchEvent(new Event('cartUpdated'));
-
-      setAddedAnimation(true);
-      setTimeout(() => setAddedAnimation(false), 2000);
-      setIsCartOpen(true);
-    } catch (err) {
-      console.error('Failed to save to cart', err);
-    }
+    addToCart(product, selectedColor?.name, selectedSize, quantity);
+    setAddedAnimation(true);
+    setTimeout(() => setAddedAnimation(false), 2000);
   };
 
   const handleBuyNow = () => {
     handleAddToCart();
-    // Redirect to checkout or open cart drawer directly
-    setIsCartOpen(true);
+    openCart();
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col font-sans">
-        <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center py-32">
           <div className="w-12 h-12 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4"></div>
           <p className="text-xs uppercase tracking-widest text-neutral-400 font-syne animate-pulse">Loading Heavyweight Specs...</p>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -174,7 +137,6 @@ export default function ProductDetailPage() {
   if (error || !product) {
     return (
       <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col font-sans">
-        <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center py-32 px-4 text-center">
           <Info className="w-12 h-12 text-neutral-600 mb-4" />
           <h2 className="text-2xl font-bold uppercase tracking-wider font-syne mb-2">Product Not Found</h2>
@@ -186,7 +148,6 @@ export default function ProductDetailPage() {
             <ArrowLeft className="w-4 h-4" /> Return to Shop
           </Link>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -596,15 +557,10 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      {/* Cart Drawer */}
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-
       {/* Quick View Modal */}
       {quickViewProduct && (
         <QuickViewModal product={quickViewProduct} onClose={() => setQuickViewProduct(null)} />
       )}
-
-      <Footer />
     </div>
   );
 }

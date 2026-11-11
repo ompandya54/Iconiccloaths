@@ -1,14 +1,40 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, X, TrendingUp } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
 
 const POPULAR_SEARCHES = ['Oversized Tees', 'Graphic Tees', 'Minimal Logo', 'Discipline Tee', 'Acid Wash', 'Black Hoodie'];
 
-export default function SearchModal({ isOpen, onClose, onSelectSearch }) {
+export default function SearchModal({
+  isOpen: propIsOpen,
+  onClose: propOnClose,
+  onSelectSearch,
+}) {
+  const router = useRouter();
+  let cartCtx = null;
+  try {
+    cartCtx = useCart();
+  } catch (e) {
+    // Graceful fallback
+  }
+
+  const isOpen = propIsOpen !== undefined ? propIsOpen : (cartCtx?.isSearchOpen ?? false);
+  const onClose = propOnClose || cartCtx?.closeSearch;
   const [query, setQuery] = useState('');
 
   if (!isOpen) return null;
+
+  const handleSearchSubmit = (searchTerm) => {
+    const term = searchTerm || query;
+    if (onSelectSearch) {
+      onSelectSearch(term);
+    } else if (term.trim()) {
+      router.push(`/shop?q=${encodeURIComponent(term.trim())}`);
+      if (onClose) onClose();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
@@ -26,6 +52,11 @@ export default function SearchModal({ isOpen, onClose, onSelectSearch }) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSearchSubmit(query);
+              }
+            }}
             placeholder="Search products, collections, graphics..."
             className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-sm font-medium"
             autoFocus
@@ -50,7 +81,7 @@ export default function SearchModal({ isOpen, onClose, onSelectSearch }) {
                 key={tag}
                 onClick={() => {
                   setQuery(tag);
-                  if (onSelectSearch) onSelectSearch(tag);
+                  handleSearchSubmit(tag);
                 }}
                 className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-gray-300 hover:bg-white hover:text-black transition-all"
               >

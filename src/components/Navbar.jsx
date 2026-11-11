@@ -2,9 +2,37 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Search, User, ShoppingBag, Menu, X } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
 
-export default function Navbar({ cartCount = 0, onOpenCart, onOpenSearch, activePage = 'home' }) {
+export default function Navbar({
+  cartCount: propCartCount,
+  onOpenCart,
+  onOpenSearch,
+  activePage: propActivePage,
+}) {
+  const pathname = usePathname();
+  let cartCtx = null;
+  try {
+    cartCtx = useCart();
+  } catch (e) {
+    // Graceful fallback if rendered outside provider
+  }
+
+  const effectiveCartCount = propCartCount !== undefined ? propCartCount : (cartCtx?.cartCount ?? 0);
+  const handleOpenCart = onOpenCart || cartCtx?.openCart;
+  const handleOpenSearch = onOpenSearch || cartCtx?.openSearch;
+
+  const activePage =
+    propActivePage ||
+    (pathname === '/'
+      ? 'home'
+      : pathname?.startsWith('/shop')
+      ? 'shop'
+      : pathname?.startsWith('/collections')
+      ? 'collections'
+      : '');
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [inlineSearchActive, setInlineSearchActive] = useState(false);
@@ -146,7 +174,7 @@ export default function Navbar({ cartCount = 0, onOpenCart, onOpenSearch, active
                   onBlur={handleSearchBlur}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      onOpenSearch(searchQuery);
+                      if (handleOpenSearch) handleOpenSearch(searchQuery);
                     }
                   }}
                   placeholder="Search..."
@@ -166,13 +194,13 @@ export default function Navbar({ cartCount = 0, onOpenCart, onOpenSearch, active
             </a>
 
             <button
-              onClick={onOpenCart}
+              onClick={handleOpenCart}
               aria-label="Cart"
               className="relative text-white hover:text-gray-300 transition-colors p-1"
             >
               <ShoppingBag className="w-5 h-5 stroke-[1.75]" />
               <span className="absolute -top-1 -right-1 bg-white text-black font-extrabold text-[9px] w-4 h-4 rounded-full flex items-center justify-center border border-black">
-                {cartCount}
+                {effectiveCartCount}
               </span>
             </button>
 
