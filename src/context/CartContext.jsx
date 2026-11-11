@@ -54,7 +54,8 @@ export function CartProvider({ children }) {
     };
 
     const colorName = selectedColor || colorObj.name || 'Standard';
-    const itemImage = colorObj.image || product.image || '/images/prod_minimal.jpg';
+    const rawImage = colorObj?.image || product.image || product.images?.[0] || '/images/prod_minimal.jpg';
+    const itemImage = typeof rawImage === 'string' ? rawImage.replace(/^http:\/\//i, 'https://') : '/images/prod_minimal.jpg';
     const itemPrice = Number(product.price) || 0;
 
     setCartItems((prev) => {
