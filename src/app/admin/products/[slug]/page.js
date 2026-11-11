@@ -140,11 +140,10 @@ export default function ViewProductPage() {
               {product.name}
             </h1>
             <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                isActive
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isActive
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : 'bg-slate-100 text-slate-600 border border-slate-200'
-              }`}
+                }`}
             >
               {isActive ? '● Live on Store' : '○ Draft / Inactive'}
             </span>
@@ -215,9 +214,8 @@ export default function ViewProductPage() {
                   <button
                     key={idx}
                     onClick={() => setActiveImage(img)}
-                    className={`w-14 h-16 rounded-lg border-2 overflow-hidden flex-shrink-0 transition-all ${
-                      activeImage === img ? 'border-blue-600 scale-105' : 'border-slate-200 opacity-70'
-                    }`}
+                    className={`w-14 h-16 rounded-lg border-2 overflow-hidden flex-shrink-0 transition-all ${activeImage === img ? 'border-blue-600 scale-105' : 'border-slate-200 opacity-70'
+                      }`}
                   >
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
@@ -389,33 +387,30 @@ export default function ViewProductPage() {
             </h2>
             <div className="flex flex-wrap gap-3">
               <span
-                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
-                  product.isBestseller
+                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${product.isBestseller
                     ? 'bg-amber-50 text-amber-800 border-amber-200'
                     : 'bg-slate-50 text-slate-400 border-slate-200'
-                }`}
+                  }`}
               >
                 <span>🔥 Bestseller Badge:</span>
                 <span>{product.isBestseller ? 'ACTIVE' : 'OFF'}</span>
               </span>
 
               <span
-                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
-                  product.isFeatured
+                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${product.isFeatured
                     ? 'bg-blue-50 text-blue-800 border-blue-200'
                     : 'bg-slate-50 text-slate-400 border-slate-200'
-                }`}
+                  }`}
               >
                 <span>⭐ Featured Drop:</span>
                 <span>{product.isFeatured ? 'ACTIVE' : 'OFF'}</span>
               </span>
 
               <span
-                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
-                  product.isNewArrival
+                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${product.isNewArrival
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                     : 'bg-slate-50 text-slate-400 border-slate-200'
-                }`}
+                  }`}
               >
                 <span>⚡ New Arrival:</span>
                 <span>{product.isNewArrival ? 'ACTIVE' : 'OFF'}</span>
