@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Upload,
@@ -15,6 +15,8 @@ import {
   DollarSign,
   Package
 } from 'lucide-react';
+import ImageCropModal from './ImageCropModal';
+import { uploadImageFile } from '@/app/api/uploadapi';
 
 const DEFAULT_CATEGORIES = [
   'Oversized Tees',
@@ -108,10 +110,17 @@ export default function ProductForm({
     isNewArrival: true,
   });
 
-  // Image input state
-  const [imageUrlInput, setImageUrlInput] = useState('');
-  const [mediaUrlInput, setMediaUrlInput] = useState('');
-  const [showMediaInput, setShowMediaInput] = useState(false);
+  // File Upload & Sharp Crop State
+  const primaryFileInputRef = useRef(null);
+  const galleryFileInputRef = useRef(null);
+
+  const [cropModal, setCropModal] = useState({
+    isOpen: false,
+    imageSrc: null,
+    target: 'primary', // 'primary' or 'gallery'
+    aspect: 1, // 1:1 default for streetwear product display
+  });
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Load existing product if in Edit mode
   useEffect(() => {
@@ -165,8 +174,6 @@ export default function ProductForm({
         isFeatured: Boolean(product.isFeatured),
         isNewArrival: product.isNewArrival !== false,
       });
-
-      if (product.image) setImageUrlInput(product.image);
     }
   }, [product]);
 
@@ -174,27 +181,58 @@ export default function ProductForm({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Set Primary Image
-  const handleApplyPrimaryImage = (url) => {
-    if (!url.trim()) return;
-    setFormData((prev) => ({
-      ...prev,
-      image: url.trim(),
-      images: prev.images.includes(url.trim()) ? prev.images : [url.trim(), ...prev.images],
-    }));
+  // Trigger File Input & Open Cropper
+  const handleFileSelect = (e, target = 'primary') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input value so selecting the same file triggers change
+    e.target.value = '';
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropModal({
+        isOpen: true,
+        imageSrc: reader.result,
+        target,
+        aspect: 1, // 1:1 square
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
-  // Add Media Image
-  const handleAddMedia = () => {
-    if (!mediaUrlInput.trim()) return;
-    const url = mediaUrlInput.trim();
-    setFormData((prev) => ({
-      ...prev,
-      images: prev.images.includes(url) ? prev.images : [...prev.images, url],
-      image: prev.image || url,
-    }));
-    setMediaUrlInput('');
-    setShowMediaInput(false);
+  // Handle Crop Confirmation -> Upload to Cloudinary via Sharp
+  const handleCropComplete = async (croppedBlob, pixelCrop) => {
+    setIsUploadingImage(true);
+    try {
+      const res = await uploadImageFile(croppedBlob, 'product.webp', pixelCrop);
+      if (res && (res.url || res.data?.url || res.secure_url)) {
+        const uploadedUrl = res.url || res.data?.url || res.secure_url;
+
+        if (cropModal.target === 'primary') {
+          setFormData((prev) => ({
+            ...prev,
+            image: uploadedUrl,
+            images: prev.images.includes(uploadedUrl) ? prev.images : [uploadedUrl, ...prev.images],
+          }));
+        } else {
+          setFormData((prev) => ({
+            ...prev,
+            images: [...prev.images, uploadedUrl],
+            image: prev.image || uploadedUrl,
+          }));
+        }
+
+        setCropModal({ isOpen: false, imageSrc: null, target: 'primary', aspect: 1 });
+      } else {
+        alert(res?.message || 'Failed to upload image to Cloudinary');
+      }
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      alert('Network error while uploading image');
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   // Remove Media Image
@@ -402,14 +440,50 @@ export default function ProductForm({
           {/* ======================================================== */}
           <div className="lg:col-span-4 space-y-6">
             
+            {/* Hidden File Pickers */}
+            <input
+              ref={primaryFileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/jpg"
+              className="hidden"
+              onChange={(e) => handleFileSelect(e, 'primary')}
+            />
+            <input
+              ref={galleryFileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/jpg"
+              className="hidden"
+              onChange={(e) => handleFileSelect(e, 'gallery')}
+            />
+
             {/* Product Image Section */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-800">
-                Product Image
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800">
+                  Product Image *
+                </label>
+                {formData.image && (
+                  <button
+                    type="button"
+                    onClick={() => primaryFileInputRef.current?.click()}
+                    className="text-[11px] text-blue-600 hover:text-blue-700 font-bold hover:underline cursor-pointer"
+                  >
+                    Change Image
+                  </button>
+                )}
+              </div>
 
               {/* Big Select Product Image Area */}
-              <div className="relative aspect-square w-full rounded-2xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white flex flex-col items-center justify-center p-4 text-center overflow-hidden transition-all group">
+              <div
+                onClick={() => {
+                  if (!formData.image) primaryFileInputRef.current?.click();
+                }}
+                className={`relative aspect-square w-full rounded-2xl border-2 border-dashed bg-white flex flex-col items-center justify-center p-3 text-center overflow-hidden transition-all group ${
+                  formData.image
+                    ? 'border-slate-200'
+                    : 'border-slate-300 hover:border-blue-500 hover:bg-blue-50/20 cursor-pointer'
+                }`}
+              >
                 {formData.image ? (
                   <>
                     <img
@@ -417,11 +491,27 @@ export default function ProductForm({
                       alt="Selected Product"
                       className="w-full h-full object-cover rounded-xl"
                     />
-                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
+                    {/* Hover Actions Bar */}
+                    <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-4">
                       <button
                         type="button"
-                        onClick={() => handleChange('image', '')}
-                        className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold shadow hover:bg-rose-700 flex items-center space-x-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          primaryFileInputRef.current?.click();
+                        }}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Crop & Replace</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleChange('image', '');
+                        }}
+                        className="px-4 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white rounded-xl text-xs font-bold shadow hover:shadow-lg flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Remove</span>
@@ -429,46 +519,37 @@ export default function ProductForm({
                     </div>
                   </>
                 ) : (
-                  <div className="flex flex-col items-center justify-center space-y-3 cursor-pointer">
-                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-500">
-                      <Upload className="w-6 h-6 stroke-[1.75]" />
+                  <div className="flex flex-col items-center justify-center space-y-3 p-4">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                      <Upload className="w-6 h-6 stroke-[2]" />
                     </div>
-                    <span className="text-xs font-semibold text-slate-600">
-                      Select Product Image
-                    </span>
+                    <div className="space-y-1">
+                      <span className="text-xs font-bold text-slate-800 block">
+                        Select Product Image
+                      </span>
+                      <p className="text-[10px] text-slate-500">
+                        Click to crop with Sharp & upload to Cloudinary
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Image URL Input or Quick Paste */}
-              <div className="flex items-center space-x-2 pt-1">
-                <input
-                  type="url"
-                  placeholder="Paste image URL (https://...)"
-                  value={imageUrlInput}
-                  onChange={(e) => setImageUrlInput(e.target.value)}
-                  onBlur={() => handleApplyPrimaryImage(imageUrlInput)}
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-blue-500 font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleApplyPrimaryImage(imageUrlInput)}
-                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg"
-                >
-                  Apply
-                </button>
-              </div>
-
               <p className="text-[10px] text-slate-400">
-                Allowed: .jpg, .jpeg, .png
+                Processed via Sharp: .webp, .jpg, .png (Optimized automatically)
               </p>
             </div>
 
             {/* Live Media (Images/Videos) Section */}
             <div className="space-y-2 pt-2">
-              <label className="block text-xs font-bold text-slate-800">
-                Live Media (Images/Videos)
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800">
+                  Live Media (Images/Videos)
+                </label>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {formData.images.length} {formData.images.length === 1 ? 'file' : 'files'}
+                </span>
+              </div>
 
               <div className="flex flex-wrap gap-3 items-center">
                 {/* Thumbnails */}
@@ -485,7 +566,7 @@ export default function ProductForm({
                     <button
                       type="button"
                       onClick={() => handleRemoveMedia(idx)}
-                      className="absolute top-1 right-1 w-5 h-5 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                      className="absolute top-1 right-1 w-5 h-5 bg-rose-600 hover:bg-rose-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow cursor-pointer"
                       title="Remove image"
                     >
                       <X className="w-3 h-3" />
@@ -496,39 +577,13 @@ export default function ProductForm({
                 {/* Add Media Box (Dotted square) */}
                 <button
                   type="button"
-                  onClick={() => setShowMediaInput(!showMediaInput)}
-                  className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-slate-50/50 flex flex-col items-center justify-center text-slate-500 hover:text-slate-800 transition-colors flex-shrink-0"
+                  onClick={() => galleryFileInputRef.current?.click()}
+                  className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/30 bg-slate-50/50 flex flex-col items-center justify-center text-slate-500 hover:text-blue-600 transition-all flex-shrink-0 cursor-pointer group"
                 >
-                  <Upload className="w-4 h-4 mb-1 stroke-[1.75]" />
+                  <Upload className="w-4 h-4 mb-1 stroke-[2] group-hover:scale-110 transition-transform" />
                   <span className="text-[9px] font-bold">Add Media</span>
                 </button>
               </div>
-
-              {/* Expandable URL Input for Extra Media */}
-              {showMediaInput && (
-                <div className="flex items-center space-x-2 pt-2 animate-in fade-in duration-200">
-                  <input
-                    type="url"
-                    placeholder="Enter additional image/video URL..."
-                    value={mediaUrlInput}
-                    onChange={(e) => setMediaUrlInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddMedia();
-                      }
-                    }}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddMedia}
-                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg"
-                  >
-                    Add
-                  </button>
-                </div>
-              )}
             </div>
 
           </div>
@@ -1003,6 +1058,16 @@ export default function ProductForm({
           </div>
         </div>
       )}
+
+      {/* 4. SHARP & CLOUDINARY IMAGE CROP MODAL */}
+      <ImageCropModal
+        isOpen={cropModal.isOpen}
+        imageSrc={cropModal.imageSrc}
+        initialAspect={cropModal.aspect}
+        isUploading={isUploadingImage}
+        onClose={() => setCropModal({ isOpen: false, imageSrc: null, target: 'primary', aspect: 1 })}
+        onCropComplete={handleCropComplete}
+      />
     </form>
   );
 }
