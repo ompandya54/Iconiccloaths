@@ -115,6 +115,9 @@ export default function BestsellersSection({ onAddToCart, onQuickView }) {
                       <img
                         src={displayImg}
                         alt={product.name || 'Iconic Streetwear'}
+                        onError={(e) => {
+                          e.currentTarget.src = '/images/prod_minimal.jpg';
+                        }}
                         className="w-full h-full object-cover filter brightness-[0.95] group-hover:scale-105 transition-transform duration-500"
                       />
                     </Link>
