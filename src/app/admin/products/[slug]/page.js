@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   CheckCircle2,
   XCircle,
-  Eye
+  Eye,
+  DollarSign
 } from 'lucide-react';
 import { getProductById, deleteProduct } from '@/app/api/productapi';
 import { useAdmin } from '../../layout';
@@ -49,7 +50,7 @@ export default function ViewProductPage() {
             data.image ||
             data.images?.[0] ||
             data.colors?.[0]?.image ||
-            'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80'
+            '/images/prod_minimal.jpg'
           );
         } else {
           setProduct(null);
@@ -72,7 +73,7 @@ export default function ViewProductPage() {
     try {
       const res = await deleteProduct(id);
       if (res && res.success !== false) {
-        if (showToast) showToast(`Deleted "${product.name}" successfully`, 'success');
+        if (showToast) showToast(`Product "${product.name}" deleted`, 'success');
         router.push('/admin/products');
       } else {
         if (showToast) showToast(res.message || 'Failed to delete product', 'error');
@@ -86,30 +87,45 @@ export default function ViewProductPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
-        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-          Loading Product Specifications...
-        </p>
+      <div className="flex flex-col min-h-screen bg-white animate-pulse">
+        <div className="bg-white border-b border-slate-200 px-6 sm:px-10 py-4 flex items-center justify-between">
+          <div className="w-36 h-6 bg-slate-200 rounded" />
+          <div className="w-20 h-9 bg-blue-200 rounded-lg" />
+        </div>
+        <div className="p-6 sm:p-10 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-4 space-y-4">
+            <div className="aspect-square bg-slate-100 rounded-2xl" />
+            <div className="flex gap-2">
+              <div className="w-16 h-16 bg-slate-100 rounded-xl" />
+              <div className="w-16 h-16 bg-slate-100 rounded-xl" />
+            </div>
+          </div>
+          <div className="lg:col-span-8 grid grid-cols-2 gap-4">
+            <div className="h-10 bg-slate-100 rounded-lg" />
+            <div className="h-10 bg-slate-100 rounded-lg" />
+            <div className="h-10 bg-slate-100 rounded-lg" />
+            <div className="h-10 bg-slate-100 rounded-lg" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-white min-h-screen">
         <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-500">
           <Package className="w-8 h-8" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Product Not Found</h2>
+          <h2 className="text-xl font-bold text-slate-900 font-sans">Product Not Found</h2>
           <p className="text-xs text-slate-500 mt-1">
             Could not find an item matching identifier "{slug}".
           </p>
         </div>
         <Link
           href="/admin/products"
-          className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-700 transition-colors"
+          className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/20"
         >
           Return to Products Catalog
         </Link>
@@ -117,316 +133,246 @@ export default function ViewProductPage() {
     );
   }
 
-  const isActive = product.isActive !== false;
-  const discountPercent =
-    product.originalPrice && product.originalPrice > product.price
-      ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-      : null;
+  const allImages = Array.isArray(product.images) && product.images.length > 0
+    ? product.images
+    : (product.image ? [product.image] : []);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8 space-y-6">
-      {/* Top Header & Breadcrumbs */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2 text-xs font-bold text-slate-400">
-            <Link href="/admin" className="hover:text-blue-600">Admin</Link>
-            <span>/</span>
-            <Link href="/admin/products" className="hover:text-blue-600">Products</Link>
-            <span>/</span>
-            <span className="text-blue-600 font-mono">{slug}</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-sans">
-              {product.name}
-            </h1>
-            <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isActive
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-slate-100 text-slate-600 border border-slate-200'
-                }`}
-            >
-              {isActive ? '● Live on Store' : '○ Draft / Inactive'}
-            </span>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
+    <div className="flex flex-col min-h-screen bg-white">
+      {/* 1. TOP HEADER (Matches Reference Image 2: View Product) */}
+      <div className="bg-white border-b border-slate-200 px-6 sm:px-10 py-4 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center space-x-3">
           <Link
             href="/admin/products"
-            className="flex items-center space-x-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+            className="p-1.5 rounded-lg text-slate-800 hover:bg-slate-100 transition-colors"
+            title="Back to Catalog"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Catalog</span>
+            <ArrowLeft className="w-6 h-6 stroke-[2.2]" />
           </Link>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight font-sans">
+            View Product
+          </h1>
+        </div>
 
-          <Link
-            href={`/shop/${product.slug || product._id || product.id}`}
-            target="_blank"
-            className="flex items-center space-x-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
-            title="View Live Product Page"
-          >
-            <ExternalLink className="w-4 h-4" />
-            <span>Customer View</span>
-          </Link>
-
+        {/* Action Buttons: Blue Edit Button + Delete */}
+        <div className="flex items-center space-x-3">
           <Link
             href={`/admin/products/${encodeURIComponent(slug)}/edit`}
-            className="flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-blue-500/20 active:scale-95"
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-all shadow-sm flex items-center space-x-2"
           >
-            <Pencil className="w-4 h-4" />
-            <span>Edit Product</span>
+            <Pencil className="w-3.5 h-3.5" />
+            <span>Edit</span>
           </Link>
-
           <button
             onClick={() => setDeleteModalOpen(true)}
-            className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition-all"
-            title="Delete this Product"
+            className="p-2.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg text-xs transition-colors"
+            title="Delete product"
           >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Main Spec Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Media Gallery & Variants */}
-        <div className="space-y-6">
-          {/* Main Visual */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
-            <div className="aspect-[3/4] w-full rounded-xl bg-slate-100 border border-slate-200 overflow-hidden relative">
-              <img
-                src={activeImage}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-              {product.badge && (
-                <span className="absolute top-3 left-3 bg-blue-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-lg shadow-md">
-                  {product.badge}
-                </span>
-              )}
+      {/* 2. BODY CONTENT (Exact 2-Column Layout from Reference Image 2) */}
+      <div className="p-6 sm:p-10 flex-1 overflow-y-auto">
+        <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+
+          {/* LEFT COLUMN: PRODUCT IMAGE & LIVE MEDIA */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-800">
+                Product Image
+              </label>
+
+              {/* Big Display Image Box */}
+              <div className="relative aspect-square w-full rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                <img
+                  src={activeImage || product.image || '/images/prod_minimal.jpg'}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
             </div>
 
-            {/* Thumbnail selector */}
-            {Array.isArray(product.images) && product.images.length > 1 && (
-              <div className="flex items-center space-x-2 overflow-x-auto pb-1">
-                {product.images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveImage(img)}
-                    className={`w-14 h-16 rounded-lg border-2 overflow-hidden flex-shrink-0 transition-all ${activeImage === img ? 'border-blue-600 scale-105' : 'border-slate-200 opacity-70'
+            {/* Live Media Thumbnails */}
+            {allImages.length > 0 && (
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-800">
+                  Live Media ({allImages.length})
+                </label>
+                <div className="flex flex-wrap gap-2.5">
+                  {allImages.map((img, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setActiveImage(img)}
+                      className={`w-16 h-16 rounded-xl border overflow-hidden bg-slate-50 transition-all ${
+                        activeImage === img ? 'border-blue-600 ring-2 ring-blue-100' : 'border-slate-200 hover:border-slate-400'
                       }`}
-                  >
-                    <img src={img} alt="" className="w-full h-full object-cover" />
-                  </button>
-                ))}
+                    >
+                      <img src={img} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
-          {/* Color Variants */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Color Variations ({product.colors?.length || 0})
-            </h3>
-            <div className="space-y-2">
-              {Array.isArray(product.colors) && product.colors.map((c, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <span
-                      className="w-5 h-5 rounded-full border border-slate-300 shadow-sm"
-                      style={{ backgroundColor: c.hex || '#000000' }}
-                    />
-                    <span className="font-bold text-slate-800">{c.name}</span>
-                    <span className="text-[10px] font-mono text-slate-400 uppercase">{c.hex}</span>
-                  </div>
-                  {c.image && (
-                    <button
-                      onClick={() => setActiveImage(c.image)}
-                      className="text-[10px] font-bold text-blue-600 hover:underline"
-                    >
-                      Preview Swatch
-                    </button>
-                  )}
+          {/* RIGHT COLUMN: 2-COLUMN FIELD DETAILS GRID */}
+          <div className="lg:col-span-8 space-y-6">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-xs">
+              
+              {/* Product Category */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Product Category
+                </label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-medium">
+                  {product.category || product.categoryLabel || 'Oversized Tees'}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* Sizing Matrix */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Active Sizing Matrix
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {Array.isArray(product.sizes) && product.sizes.map((s) => (
-                <span
-                  key={s}
-                  className="px-3.5 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-bold text-xs"
-                >
-                  {s}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
+              {/* Product Name / Design Name */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Product Name / Design Name
+                </label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-bold text-sm">
+                  {product.name}
+                </div>
+              </div>
 
-        {/* Right Column: Key Specifications & Metrics (2 Columns Wide) */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Price & Commercials */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Selling Price
-                </span>
-                <div className="text-2xl font-black text-slate-900 font-mono mt-1">
+              {/* Price */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Price
+                </label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-bold text-sm text-blue-700">
                   ₹{Number(product.price || 0).toLocaleString('en-IN')}
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Original MRP
-                </span>
-                <div className="text-2xl font-black text-slate-400 font-mono mt-1 line-through">
-                  ₹{Number(product.originalPrice || product.price || 0).toLocaleString('en-IN')}
+              {/* Fabric Weight / GSM */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Weight / Fabric GSM
+                </label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-medium">
+                  {product.material || '240 GSM'}
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">
-                  Customer Discount
-                </span>
-                <div className="text-2xl font-black text-blue-700 font-mono mt-1">
-                  {discountPercent ? `${discountPercent}% OFF` : 'Standard'}
+              {/* Stock Quantity */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Total Stock Inventory
+                </label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-bold">
+                  {product.stock ?? 50} Units
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Core Streetwear Specs Card */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
-              Streetwear Design Specifications
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              {/* Category */}
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-400 font-bold uppercase text-[10px] block mb-1">
-                  Category
-                </span>
-                <span className="text-slate-900 font-bold capitalize">
-                  {product.category || 'Oversized Streetwear'}
-                </span>
-                {product.subcategory && (
-                  <span className="text-slate-500 ml-1">({product.subcategory})</span>
-                )}
               </div>
 
               {/* Fit Style */}
-              <div className="p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-200">
-                <span className="text-indigo-600 font-bold uppercase text-[10px] block mb-1">
-                  Fit Style (Distinct Attribute)
-                </span>
-                <span className="text-indigo-900 font-black text-sm">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Fit Style
+                </label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-medium">
                   {product.fit || 'Oversized Fit'}
-                </span>
+                </div>
               </div>
 
               {/* Theme */}
-              <div className="p-3.5 rounded-xl bg-sky-50/60 border border-sky-200">
-                <span className="text-sky-600 font-bold uppercase text-[10px] block mb-1">
-                  Theme Tag (Distinct Attribute)
-                </span>
-                <span className="text-sky-900 font-black text-sm">
-                  {product.theme || 'Street'}
-                </span>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Theme / Style
+                </label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-medium">
+                  {product.theme || 'Streetwear'}
+                </div>
               </div>
 
-              {/* Fabric & Material */}
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-400 font-bold uppercase text-[10px] block mb-1">
-                  Material & GSM
-                </span>
-                <span className="text-slate-900 font-bold">
-                  {product.material || '100% French Terry Cotton (240 GSM)'}
-                </span>
-              </div>
-
-              {/* Stock Inventory */}
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-400 font-bold uppercase text-[10px] block mb-1">
-                  Stock Units Available
-                </span>
-                <span className="text-slate-900 font-bold font-mono text-sm">
-                  {product.stock ?? 50} units
-                </span>
+              {/* Collection */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Collection / Capsule
+                </label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-medium">
+                  {product.collectionName || product.subcategory || 'Drop 01 - Heavyweight'}
+                </div>
               </div>
 
               {/* Badge */}
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-400 font-bold uppercase text-[10px] block mb-1">
-                  Ribbon Badge
-                </span>
-                <span className="text-blue-700 font-black font-sans">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Badge / Ribbon Tag
+                </label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-bold uppercase">
                   {product.badge || 'NEW DROP'}
-                </span>
+                </div>
               </div>
+
+              {/* Store Status */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Status
+                </label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-bold">
+                  <span className={product.isActive !== false ? 'text-emerald-600' : 'text-amber-600'}>
+                    ● {product.isActive !== false ? 'Active in Store' : 'Draft / Inactive'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Description (2 Columns) */}
+              <div className="md:col-span-2">
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Product Description
+                </label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-700 leading-relaxed font-normal min-h-[70px]">
+                  {product.description || 'No description provided.'}
+                </div>
+              </div>
+
             </div>
+
+            {/* Product Variants Matrix Table */}
+            {Array.isArray(product.variants) && product.variants.length > 0 && (
+              <div className="pt-4 border-t border-slate-200 space-y-3">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Product Variants & Individual Sizing Stock
+                </h3>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                      <tr>
+                        <th className="py-2.5 px-3">Size</th>
+                        <th className="py-2.5 px-3">Color</th>
+                        <th className="py-2.5 px-3">Price</th>
+                        <th className="py-2.5 px-3">Stock Units</th>
+                        <th className="py-2.5 px-3">SKU</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200/60 bg-white">
+                      {product.variants.map((v, i) => (
+                        <tr key={i} className="hover:bg-slate-50">
+                          <td className="py-2.5 px-3 font-bold text-slate-900">{v.size}</td>
+                          <td className="py-2.5 px-3 text-slate-600">{v.color || 'Default'}</td>
+                          <td className="py-2.5 px-3 font-bold text-blue-700">₹{v.price || product.price}</td>
+                          <td className="py-2.5 px-3 font-bold text-slate-900">{v.stock}</td>
+                          <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400">{v.sku || 'N/A'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
           </div>
 
-          {/* Marketing Highlights */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
-            <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
-              Merchandising Badges
-            </h2>
-            <div className="flex flex-wrap gap-3">
-              <span
-                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${product.isBestseller
-                    ? 'bg-amber-50 text-amber-800 border-amber-200'
-                    : 'bg-slate-50 text-slate-400 border-slate-200'
-                  }`}
-              >
-                <span>🔥 Bestseller Badge:</span>
-                <span>{product.isBestseller ? 'ACTIVE' : 'OFF'}</span>
-              </span>
-
-              <span
-                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${product.isFeatured
-                    ? 'bg-blue-50 text-blue-800 border-blue-200'
-                    : 'bg-slate-50 text-slate-400 border-slate-200'
-                  }`}
-              >
-                <span>⭐ Featured Drop:</span>
-                <span>{product.isFeatured ? 'ACTIVE' : 'OFF'}</span>
-              </span>
-
-              <span
-                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${product.isNewArrival
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : 'bg-slate-50 text-slate-400 border-slate-200'
-                  }`}
-              >
-                <span>⚡ New Arrival:</span>
-                <span>{product.isNewArrival ? 'ACTIVE' : 'OFF'}</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
-            <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
-              Product Story & Description
-            </h2>
-            <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line">
-              {product.description || 'No detailed description provided for this product drop.'}
-            </p>
-          </div>
         </div>
       </div>
 
@@ -436,13 +382,11 @@ export default function ViewProductPage() {
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDelete}
         title="Delete Product"
-        message="Are you sure you want to permanently delete this product? All variants, images, and catalog entries will be removed."
-        itemName={product.name}
-        confirmText={isDeleting ? 'Deleting...' : 'Delete Permanently'}
-        isLoading={isDeleting}
-        isDanger={true}
+        message={`Are you sure you want to permanently delete "${product.name}"? This action cannot be undone.`}
+        confirmText={isDeleting ? 'Deleting...' : 'Delete Product'}
+        cancelText="Cancel"
+        type="danger"
       />
     </div>
   );
 }
-

@@ -11,70 +11,46 @@ import { useAdmin } from '../../../layout';
 // Clean Content-Only Skeleton Loader
 function ProductEditSkeleton() {
   return (
-    <div className="flex flex-col h-full bg-slate-50 animate-pulse">
+    <div className="flex flex-col min-h-screen bg-white animate-pulse">
       {/* Header Skeleton */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 flex items-center justify-between">
+      <div className="bg-white border-b border-slate-200 px-6 sm:px-10 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <div className="w-16 h-8 bg-slate-200 rounded-xl" />
-          <div className="space-y-2">
-            <div className="w-48 h-5 bg-slate-200 rounded" />
-            <div className="w-72 h-3 bg-slate-100 rounded" />
-          </div>
+          <div className="w-8 h-8 bg-slate-200 rounded-lg" />
+          <div className="w-40 h-6 bg-slate-200 rounded" />
         </div>
-        <div className="flex space-x-3">
-          <div className="w-20 h-9 bg-slate-200 rounded-xl" />
-          <div className="w-28 h-9 bg-blue-200 rounded-xl" />
-        </div>
+        <div className="w-24 h-10 bg-slate-800 rounded-lg" />
       </div>
 
       {/* 2-Column Body Skeleton */}
-      <div className="p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="p-6 sm:p-10 flex-1 overflow-y-auto">
+        <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
           {/* Left Column Skeleton */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 space-y-4">
-              <div className="w-32 h-4 bg-slate-200 rounded" />
-              <div className="aspect-[3/4] w-full bg-slate-100 rounded-xl" />
-              <div className="w-full h-9 bg-slate-100 rounded-xl" />
+          <div className="lg:col-span-4 space-y-6">
+            <div className="space-y-2">
+              <div className="w-28 h-4 bg-slate-200 rounded" />
+              <div className="aspect-square w-full bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200" />
             </div>
-
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 space-y-4">
-              <div className="w-36 h-4 bg-slate-200 rounded" />
-              <div className="grid grid-cols-3 gap-3">
-                <div className="aspect-[3/4] bg-slate-100 rounded-xl" />
-                <div className="aspect-[3/4] bg-slate-100 rounded-xl" />
-                <div className="aspect-[3/4] bg-slate-100 rounded-xl" />
+            <div className="space-y-2">
+              <div className="w-32 h-4 bg-slate-200 rounded" />
+              <div className="flex gap-3">
+                <div className="w-20 h-20 bg-slate-100 rounded-xl" />
+                <div className="w-20 h-20 bg-slate-100 rounded-xl" />
               </div>
             </div>
           </div>
 
           {/* Right Column Skeleton */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 space-y-4">
-              <div className="w-40 h-4 bg-slate-200 rounded" />
-              <div className="w-full h-10 bg-slate-100 rounded-xl" />
-              <div className="grid grid-cols-2 gap-4">
-                <div className="h-10 bg-slate-100 rounded-xl" />
-                <div className="h-10 bg-slate-100 rounded-xl" />
-              </div>
-              <div className="w-full h-24 bg-slate-100 rounded-xl" />
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 space-y-4">
-              <div className="w-36 h-4 bg-slate-200 rounded" />
-              <div className="grid grid-cols-3 gap-4">
-                <div className="h-10 bg-slate-100 rounded-xl" />
-                <div className="h-10 bg-slate-100 rounded-xl" />
-                <div className="h-10 bg-slate-100 rounded-xl" />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 space-y-4">
-              <div className="w-48 h-4 bg-slate-200 rounded" />
-              <div className="grid grid-cols-2 gap-4">
-                <div className="h-10 bg-slate-100 rounded-xl" />
-                <div className="h-10 bg-slate-100 rounded-xl" />
-              </div>
+          <div className="lg:col-span-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+              <div className="h-10 bg-slate-100 rounded-lg" />
+              <div className="h-10 bg-slate-100 rounded-lg" />
+              <div className="h-10 bg-slate-100 rounded-lg" />
+              <div className="h-10 bg-slate-100 rounded-lg" />
+              <div className="h-10 bg-slate-100 rounded-lg" />
+              <div className="h-10 bg-slate-100 rounded-lg" />
+              <div className="h-10 bg-slate-100 rounded-lg" />
+              <div className="h-10 bg-slate-100 rounded-lg" />
+              <div className="md:col-span-2 h-24 bg-slate-100 rounded-lg" />
             </div>
           </div>
         </div>
