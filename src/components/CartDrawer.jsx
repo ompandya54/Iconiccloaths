@@ -1,7 +1,9 @@
 'use client';
 
-import { X, Trash2, ArrowRight, ShoppingBag } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { X, Trash2, ArrowRight, ShoppingBag, ShieldCheck } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function CartDrawer({
   isOpen: propIsOpen,
@@ -17,11 +19,29 @@ export default function CartDrawer({
     // Graceful fallback if outside CartProvider
   }
 
+  const router = useRouter();
+  let authCtx = null;
+  try {
+    authCtx = useAuth();
+  } catch (e) {
+    // Graceful fallback
+  }
+  const { isAuthenticated } = authCtx || {};
+
   const isOpen = propIsOpen !== undefined ? propIsOpen : (cartCtx?.isCartOpen ?? false);
   const onClose = propOnClose || cartCtx?.closeCart;
   const cartItems = propCartItems || cartCtx?.cartItems || [];
   const onUpdateQuantity = propOnUpdateQuantity || cartCtx?.updateQuantity;
   const onRemoveItem = propOnRemoveItem || cartCtx?.removeFromCart;
+
+  const handleCheckout = () => {
+    if (onClose) onClose();
+    if (isAuthenticated) {
+      router.push('/checkout');
+    } else {
+      router.push('/login?redirect=/checkout');
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -153,13 +173,21 @@ export default function CartDrawer({
               </div>
             </div>
 
-            <button
-              onClick={() => alert('Proceeding to Checkout simulation!')}
-              className="w-full bg-white text-black hover:bg-gray-200 py-3.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-2"
-            >
-              <span>CHECKOUT</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={handleCheckout}
+                className="w-full bg-white text-black hover:bg-gray-200 py-3.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-2 shadow-lg hover:shadow-white/10"
+              >
+                <span>{isAuthenticated ? 'PROCEED TO CHECKOUT' : 'SIGN IN & CHECKOUT'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              {!isAuthenticated && (
+                <div className="flex items-center justify-center space-x-1 text-[10px] text-gray-400">
+                  <ShieldCheck className="w-3.5 h-3.5 text-gray-400" />
+                  <span>Secure checkout — Login required to place order</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

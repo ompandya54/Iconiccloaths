@@ -1,4 +1,5 @@
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import StoreShell from "@/components/StoreShell";
 
@@ -17,11 +18,13 @@ export default function RootLayout({ children }) {
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body className="bg-[#08080a] text-white antialiased selection:bg-white selection:text-black">
-        <CartProvider>
-          <StoreShell>
-            {children}
-          </StoreShell>
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <StoreShell>
+              {children}
+            </StoreShell>
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

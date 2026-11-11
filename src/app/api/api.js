@@ -16,7 +16,13 @@ export async function apiRequest(endpoint, options = {}) {
 
   // Add auth token if available in browser
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('iconic_admin_token') || localStorage.getItem('token');
+    const isAdminRoute = window.location.pathname.startsWith('/admin');
+    const token = options.token || 
+      (isAdminRoute 
+        ? (localStorage.getItem('iconic_admin_token') || localStorage.getItem('token'))
+        : (localStorage.getItem('iconic_customer_token') || localStorage.getItem('token') || localStorage.getItem('iconic_admin_token'))
+      );
+      
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }

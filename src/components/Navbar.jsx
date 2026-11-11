@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Search, User, ShoppingBag, Menu, X } from 'lucide-react';
+import { Search, User, ShoppingBag, Menu, X, ChevronDown, Package, LogOut, UserCheck } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Navbar({
   cartCount: propCartCount,
@@ -23,6 +24,27 @@ export default function Navbar({
   const effectiveCartCount = propCartCount !== undefined ? propCartCount : (cartCtx?.cartCount ?? 0);
   const handleOpenCart = onOpenCart || cartCtx?.openCart;
   const handleOpenSearch = onOpenSearch || cartCtx?.openSearch;
+
+  let authCtx = null;
+  try {
+    authCtx = useAuth();
+  } catch (e) {
+    // Graceful fallback
+  }
+  const { user, isAuthenticated, logout } = authCtx || {};
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef(null);
+
+  // Close account dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
+        setAccountMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const activePage =
     propActivePage ||
@@ -185,13 +207,65 @@ export default function Navbar({
               </div>
             </div>
 
-            <a
-              href="#account"
-              aria-label="Account"
-              className="hidden sm:block text-white hover:text-gray-300 transition-colors p-1"
-            >
-              <User className="w-5 h-5 stroke-[1.75]" />
-            </a>
+            {/* Account Trigger & Dropdown */}
+            <div className="relative hidden sm:block" ref={accountMenuRef}>
+              {isAuthenticated ? (
+                <div>
+                  <button
+                    onClick={() => setAccountMenuOpen(!accountMenuOpen)}
+                    aria-label="Account menu"
+                    className="flex items-center space-x-1.5 text-white hover:text-gray-300 transition-colors p-1 group"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-white/10 group-hover:bg-white/20 border border-white/20 flex items-center justify-center text-xs font-bold text-white uppercase tracking-wider">
+                      {user?.name ? user.name.charAt(0) : 'U'}
+                    </div>
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {accountMenuOpen && (
+                    <div className="absolute right-0 mt-2.5 w-60 bg-[#0e0e12]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-2 z-50 text-left animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="px-4 py-3 border-b border-white/10">
+                        <p className="text-xs font-bold text-white uppercase tracking-wider truncate">{user?.name || 'Customer'}</p>
+                        <p className="text-[10px] text-gray-400 truncate">{user?.email}</p>
+                      </div>
+
+                      <div className="py-1">
+                        <Link
+                          href="/account"
+                          onClick={() => setAccountMenuOpen(false)}
+                          className="flex items-center space-x-2.5 px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                        >
+                          <Package className="w-4 h-4 text-gray-400" />
+                          <span>My Orders & Profile</span>
+                        </Link>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-1">
+                        <button
+                          onClick={() => {
+                            setAccountMenuOpen(false);
+                            if (logout) logout();
+                          }}
+                          className="w-full flex items-center space-x-2.5 px-4 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-white/5 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  aria-label="Sign In"
+                  title="Sign In / Register"
+                  className="text-white hover:text-gray-300 transition-colors p-1 flex items-center"
+                >
+                  <User className="w-5 h-5 stroke-[1.75]" />
+                </Link>
+              )}
+            </div>
 
             <button
               onClick={handleOpenCart}
@@ -257,6 +331,38 @@ export default function Navbar({
           >
             CONTACT
           </Link>
+
+          {/* Customer Auth Actions in Mobile */}
+          <div className="pt-6 border-t border-white/10 w-48 mx-auto space-y-4">
+            {isAuthenticated ? (
+              <>
+                <Link
+                  onClick={() => setMobileMenuOpen(false)}
+                  href="/account"
+                  className="block text-base font-bold uppercase tracking-widest text-white hover:text-gray-300"
+                >
+                  MY ACCOUNT ({user?.name ? user.name.split(' ')[0] : 'PROFILE'})
+                </Link>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (logout) logout();
+                  }}
+                  className="block w-full text-xs font-semibold uppercase tracking-widest text-red-400 hover:text-red-300"
+                >
+                  SIGN OUT
+                </button>
+              </>
+            ) : (
+              <Link
+                onClick={() => setMobileMenuOpen(false)}
+                href="/login"
+                className="block text-base font-bold uppercase tracking-widest text-white hover:text-gray-300"
+              >
+                SIGN IN / REGISTER
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </>
