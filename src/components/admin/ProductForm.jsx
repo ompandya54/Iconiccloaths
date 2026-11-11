@@ -91,7 +91,6 @@ export default function ProductForm({
     fit: 'Oversized Fit',
     theme: 'Streetwear',
     collectionName: 'Drop 01 - Heavyweight',
-    badge: 'NEW DROP',
     material: '100% French Terry Cotton',
     description: '',
     image: '',
@@ -106,6 +105,7 @@ export default function ProductForm({
     isActive: true,
     isBestseller: false,
     isFeatured: false,
+    isNewArrival: true,
   });
 
   // Image input state
@@ -141,7 +141,6 @@ export default function ProductForm({
         fit: product.fit || 'Oversized Fit',
         theme: product.theme || 'Streetwear',
         collectionName: product.collectionName || product.subcategory || 'Drop 01 - Heavyweight',
-        badge: product.badge || 'NEW DROP',
         material: product.material || '100% French Terry Cotton',
         description: product.description || '',
         image: product.image || initialImages[0] || '',
@@ -164,6 +163,7 @@ export default function ProductForm({
         isActive: product.isActive !== false,
         isBestseller: Boolean(product.isBestseller),
         isFeatured: Boolean(product.isFeatured),
+        isNewArrival: product.isNewArrival !== false,
       });
 
       if (product.image) setImageUrlInput(product.image);
@@ -308,6 +308,22 @@ export default function ProductForm({
       ? [...new Set(formData.variants.map((v) => v.size).filter(Boolean))]
       : STANDARD_SIZES.slice(1, 5);
 
+    const discountPercent = formData.originalPrice && Number(formData.originalPrice) > Number(formData.price)
+      ? Math.round(((Number(formData.originalPrice) - Number(formData.price)) / Number(formData.originalPrice)) * 100)
+      : 0;
+
+    // Smart Auto-Generated Badge based on status and discount
+    let autoBadge = '';
+    if (discountPercent > 0) {
+      autoBadge = `${discountPercent}% OFF`;
+    } else if (formData.isBestseller) {
+      autoBadge = 'BESTSELLER';
+    } else if (formData.isNewArrival) {
+      autoBadge = 'NEW DROP';
+    } else if (formData.isFeatured) {
+      autoBadge = 'FEATURED';
+    }
+
     const payload = {
       name: formData.name.trim(),
       slug: autoSlug, // Auto-generated silently
@@ -321,7 +337,7 @@ export default function ProductForm({
       fit: formData.fit,
       theme: formData.theme,
       collectionName: formData.collectionName,
-      badge: formData.badge,
+      badge: autoBadge, // Auto-computed marketing badge
       description: formData.description.trim(),
       image: primaryImg,
       images: allImages,
@@ -339,6 +355,7 @@ export default function ProductForm({
       isActive: formData.isActive,
       isBestseller: formData.isBestseller,
       isFeatured: formData.isFeatured,
+      isNewArrival: formData.isNewArrival,
     };
 
     onSave(payload);
@@ -702,30 +719,18 @@ export default function ProductForm({
                 </div>
               </div>
 
-              {/* Badge / Ribbon Tag with + Button */}
+              {/* Fabric Material / Composition */}
               <div>
                 <label className="block font-bold text-slate-800 mb-1.5">
-                  Badge / Ribbon Tag
+                  Fabric Composition / Notes
                 </label>
-                <div className="flex items-center space-x-2">
-                  <select
-                    value={formData.badge}
-                    onChange={(e) => handleChange('badge', e.target.value)}
-                    className="flex-1 bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 outline-none focus:border-blue-500 font-medium"
-                  >
-                    {badges.map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setQuickAddModal({ open: true, field: 'badge', title: 'Add New Badge', value: '' })}
-                    className="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm"
-                    title="Add new badge"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  placeholder="e.g. 100% French Terry Cotton, Pre-shrunk"
+                  value={formData.material}
+                  onChange={(e) => handleChange('material', e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 font-medium"
+                />
               </div>
 
               {/* Product Description (Span 2 Columns) */}
@@ -863,27 +868,85 @@ export default function ProductForm({
               )}
             </div>
 
-            {/* Status Toggles */}
-            <div className="pt-4 border-t border-slate-200 flex flex-wrap gap-4 text-xs">
-              <label className="flex items-center space-x-2.5 p-3 rounded-lg border border-slate-200 bg-slate-50/50 cursor-pointer hover:bg-slate-50">
-                <input
-                  type="checkbox"
-                  checked={formData.isActive}
-                  onChange={(e) => handleChange('isActive', e.target.checked)}
-                  className="w-4 h-4 accent-blue-600 rounded"
-                />
-                <span className="font-bold text-slate-800">Active in Store Catalog</span>
+            {/* Status & Placement Curation Flags (All 4 Flags) */}
+            <div className="pt-5 border-t border-slate-200 space-y-3">
+              <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Storefront Flags & Curation
               </label>
 
-              <label className="flex items-center space-x-2.5 p-3 rounded-lg border border-slate-200 bg-slate-50/50 cursor-pointer hover:bg-slate-50">
-                <input
-                  type="checkbox"
-                  checked={formData.isBestseller}
-                  onChange={(e) => handleChange('isBestseller', e.target.checked)}
-                  className="w-4 h-4 accent-blue-600 rounded"
-                />
-                <span className="font-bold text-slate-800">Feature in Bestsellers</span>
-              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                {/* 1. Active in Store */}
+                <label className={`flex items-center space-x-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.isActive
+                    ? 'border-emerald-300 bg-emerald-50/70 text-emerald-950 shadow-sm'
+                    : 'border-slate-200 bg-slate-50 text-slate-500'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isActive}
+                    onChange={(e) => handleChange('isActive', e.target.checked)}
+                    className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
+                  />
+                  <div>
+                    <span className="font-bold block">Active in Store</span>
+                    <span className="text-[10px] text-slate-500">Live in catalog</span>
+                  </div>
+                </label>
+
+                {/* 2. Bestseller */}
+                <label className={`flex items-center space-x-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.isBestseller
+                    ? 'border-amber-300 bg-amber-50/70 text-amber-950 shadow-sm'
+                    : 'border-slate-200 bg-slate-50 text-slate-500'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isBestseller}
+                    onChange={(e) => handleChange('isBestseller', e.target.checked)}
+                    className="w-4 h-4 accent-amber-600 rounded cursor-pointer"
+                  />
+                  <div>
+                    <span className="font-bold block">Bestseller</span>
+                    <span className="text-[10px] text-slate-500">Homepage Bestsellers</span>
+                  </div>
+                </label>
+
+                {/* 3. Featured Hero */}
+                <label className={`flex items-center space-x-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.isFeatured
+                    ? 'border-purple-300 bg-purple-50/70 text-purple-950 shadow-sm'
+                    : 'border-slate-200 bg-slate-50 text-slate-500'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isFeatured}
+                    onChange={(e) => handleChange('isFeatured', e.target.checked)}
+                    className="w-4 h-4 accent-purple-600 rounded cursor-pointer"
+                  />
+                  <div>
+                    <span className="font-bold block">Spotlight Drop</span>
+                    <span className="text-[10px] text-slate-500">Homepage Hero / Grid</span>
+                  </div>
+                </label>
+
+                {/* 4. New Arrival */}
+                <label className={`flex items-center space-x-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.isNewArrival
+                    ? 'border-blue-300 bg-blue-50/70 text-blue-950 shadow-sm'
+                    : 'border-slate-200 bg-slate-50 text-slate-500'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isNewArrival}
+                    onChange={(e) => handleChange('isNewArrival', e.target.checked)}
+                    className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+                  />
+                  <div>
+                    <span className="font-bold block">New Arrival</span>
+                    <span className="text-[10px] text-slate-500">Latest Drops list</span>
+                  </div>
+                </label>
+              </div>
             </div>
 
           </div>

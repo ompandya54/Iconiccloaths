@@ -303,25 +303,52 @@ export default function ViewProductPage() {
                 </div>
               </div>
 
-              {/* Badge */}
+              {/* Fabric Material */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1.5">
-                  Badge / Ribbon Tag
+                  Fabric Composition / Notes
                 </label>
-                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-bold uppercase">
-                  {product.badge || 'NEW DROP'}
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-medium">
+                  {product.material || '100% French Terry Cotton'}
                 </div>
               </div>
 
-              {/* Store Status */}
+              {/* Marketing Badge */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1.5">
-                  Status
+                  Active Display Sticker
                 </label>
-                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-bold">
-                  <span className={product.isActive !== false ? 'text-emerald-600' : 'text-amber-600'}>
-                    ● {product.isActive !== false ? 'Active in Store' : 'Draft / Inactive'}
-                  </span>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-slate-900 font-bold uppercase">
+                  {product.badge || 'None'}
+                </div>
+              </div>
+
+              {/* Storefront Curation Flags (4 Flags) */}
+              <div className="md:col-span-2">
+                <label className="block font-bold text-slate-700 mb-2">
+                  Storefront Flags & Curation
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className={`p-2.5 rounded-lg border text-center font-bold ${
+                    product.isActive !== false ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-slate-50 border-slate-200 text-slate-400'
+                  }`}>
+                    {product.isActive !== false ? '✓ Active in Store' : '○ Inactive / Draft'}
+                  </div>
+                  <div className={`p-2.5 rounded-lg border text-center font-bold ${
+                    product.isBestseller ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-slate-50 border-slate-200 text-slate-400'
+                  }`}>
+                    {product.isBestseller ? '✓ Bestseller' : '○ Normal'}
+                  </div>
+                  <div className={`p-2.5 rounded-lg border text-center font-bold ${
+                    product.isFeatured ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-slate-50 border-slate-200 text-slate-400'
+                  }`}>
+                    {product.isFeatured ? '✓ Spotlight Hero' : '○ Standard'}
+                  </div>
+                  <div className={`p-2.5 rounded-lg border text-center font-bold ${
+                    product.isNewArrival !== false ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-slate-50 border-slate-200 text-slate-400'
+                  }`}>
+                    {product.isNewArrival !== false ? '✓ New Arrival Drop' : '○ Evergreen'}
+                  </div>
                 </div>
               </div>
 
