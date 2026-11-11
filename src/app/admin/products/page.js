@@ -22,7 +22,12 @@ import {
 import { useAdmin } from '../layout';
 import ConfirmModal from '@/components/ConfirmModal';
 import ProductFilterDrawer from '@/components/admin/ProductFilterDrawer';
-import { getProducts, deleteProduct, toggleProductStatus } from '@/app/api/productapi';
+import {
+  getProducts,
+  deleteProduct,
+  toggleProductStatus,
+  bulkProductAction,
+} from '@/app/api/productapi';
 
 export default function AdminProductsPage() {
   const router = useRouter();
@@ -49,10 +54,15 @@ export default function AdminProductsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Multi-select & Bulk Actions State
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [isBulkOperating, setIsBulkOperating] = useState(false);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+
   // Toggling status state
   const [togglingId, setTogglingId] = useState(null);
 
-  // Delete Modal State
+  // Single Delete Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -254,6 +264,131 @@ export default function AdminProductsPage() {
   const startIndex = (currentPage - 1) * pageSize;
   const displayedProducts = filteredProducts.slice(startIndex, startIndex + pageSize);
 
+  // Multi-select helpers
+  const currentPageIds = useMemo(() => {
+    return displayedProducts.map((p) => p._id || p.id).filter(Boolean);
+  }, [displayedProducts]);
+
+  const isCurrentPageAllSelected =
+    currentPageIds.length > 0 && currentPageIds.every((id) => selectedIds.includes(id));
+
+  const isSomePageSelected =
+    currentPageIds.some((id) => selectedIds.includes(id));
+
+  const handleToggleSelectAllCurrentPage = () => {
+    if (isCurrentPageAllSelected) {
+      // Uncheck all displayed items
+      setSelectedIds((prev) => prev.filter((id) => !currentPageIds.includes(id)));
+    } else {
+      // Check all displayed items
+      setSelectedIds((prev) => {
+        const next = new Set([...prev, ...currentPageIds]);
+        return Array.from(next);
+      });
+    }
+  };
+
+  const handleToggleSelectRow = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllFiltered = () => {
+    const allFilteredIds = filteredProducts.map((p) => p._id || p.id).filter(Boolean);
+    setSelectedIds(allFilteredIds);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedIds([]);
+  };
+
+  // Bulk Status Change
+  const handleBulkStatus = async (activate) => {
+    if (selectedIds.length === 0) return;
+    setIsBulkOperating(true);
+    const action = activate ? 'activate' : 'deactivate';
+
+    try {
+      const res = await bulkProductAction(action, selectedIds);
+      if (res && res.success) {
+        setProducts((prev) =>
+          prev.map((p) => {
+            const id = p._id || p.id;
+            return selectedIds.includes(id) ? { ...p, isActive: activate } : p;
+          })
+        );
+        if (showToast) {
+          showToast(
+            `${selectedIds.length} products marked as ${activate ? 'Active' : 'Draft'}`,
+            'success'
+          );
+        }
+      } else {
+        await Promise.all(
+          selectedIds.map(async (id) => {
+            const prod = products.find((p) => (p._id || p.id) === id);
+            if (prod && prod.isActive !== activate) {
+              await toggleProductStatus(id);
+            }
+          })
+        );
+        setProducts((prev) =>
+          prev.map((p) => {
+            const id = p._id || p.id;
+            return selectedIds.includes(id) ? { ...p, isActive: activate } : p;
+          })
+        );
+        if (showToast) {
+          showToast(
+            `${selectedIds.length} products marked as ${activate ? 'Active' : 'Draft'}`,
+            'success'
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Bulk status error:', err);
+      if (showToast) showToast('Failed to update status for selected products', 'error');
+    } finally {
+      setIsBulkOperating(false);
+    }
+  };
+
+  // Bulk Delete
+  const handleConfirmBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkOperating(true);
+
+    try {
+      const res = await bulkProductAction('delete', selectedIds);
+      if (res && res.success) {
+        setProducts((prev) =>
+          prev.filter((p) => !selectedIds.includes(p._id || p.id))
+        );
+        if (showToast) {
+          showToast(`Successfully deleted ${selectedIds.length} products`, 'success');
+        }
+        setSelectedIds([]);
+        setBulkDeleteModalOpen(false);
+      } else {
+        await Promise.all(selectedIds.map((id) => deleteProduct(id)));
+        setProducts((prev) =>
+          prev.filter((p) => !selectedIds.includes(p._id || p.id))
+        );
+        if (showToast) {
+          showToast(`Successfully deleted ${selectedIds.length} products`, 'success');
+        }
+        setSelectedIds([]);
+        setBulkDeleteModalOpen(false);
+      }
+    } catch (err) {
+      console.error('Bulk delete error:', err);
+      if (showToast) showToast('Failed to delete selected products', 'error');
+    } finally {
+      setIsBulkOperating(false);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 relative">
       
@@ -393,6 +528,78 @@ export default function AdminProductsPage() {
         </div>
       </header>
 
+      {/* 1.1 BULK ACTION BAR */}
+      {selectedIds.length > 0 && (
+        <div className="bg-slate-900 text-white px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-md z-30 transition-all border-b border-slate-800 flex-shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              <span className="text-xs font-bold text-white">
+                <span className="text-blue-400 font-mono text-sm font-black mr-1">{selectedIds.length}</span>
+                {selectedIds.length === 1 ? 'item' : 'items'} selected
+              </span>
+            </div>
+
+            {selectedIds.length < filteredProducts.length && (
+              <button
+                type="button"
+                onClick={handleSelectAllFiltered}
+                className="text-xs text-blue-400 hover:text-blue-300 underline font-semibold transition-colors hidden sm:inline"
+              >
+                Select all {filteredProducts.length} matching
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => handleBulkStatus(true)}
+              disabled={isBulkOperating}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm disabled:opacity-50 active:scale-95 cursor-pointer"
+              title="Activate selected products"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Mark Active</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleBulkStatus(false)}
+              disabled={isBulkOperating}
+              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm disabled:opacity-50 active:scale-95 cursor-pointer"
+              title="Draft selected products"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              <span>Mark Draft</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setBulkDeleteModalOpen(true)}
+              disabled={isBulkOperating}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm disabled:opacity-50 active:scale-95 cursor-pointer"
+              title="Delete selected products"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete ({selectedIds.length})</span>
+            </button>
+
+            <div className="h-4 w-px bg-slate-700 mx-1" />
+
+            <button
+              type="button"
+              onClick={handleClearSelection}
+              className="text-xs text-slate-400 hover:text-white flex items-center space-x-1 px-2 py-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Clear Selection"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Deselect</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 2. SCROLLABLE TABLE CONTAINER WITH FIXED COLUMN HEADERS (ATTRIBUTES) */}
       <div className="flex-1 overflow-y-auto overflow-x-auto relative">
         {loading ? (
@@ -425,6 +632,22 @@ export default function AdminProductsPage() {
             {/* FIXED / STICKY COLUMN ATTRIBUTES DIRECTLY UNDER HEADER */}
             <thead className="sticky top-0 z-20 bg-slate-100/95 backdrop-blur-md border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider shadow-sm">
               <tr>
+                <th className="py-3 px-4 w-12 text-center">
+                  <div className="flex items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={isCurrentPageAllSelected}
+                      ref={(el) => {
+                        if (el) {
+                          el.indeterminate = isSomePageSelected && !isCurrentPageAllSelected;
+                        }
+                      }}
+                      onChange={handleToggleSelectAllCurrentPage}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600 transition-all"
+                      title={isCurrentPageAllSelected ? "Deselect all on this page" : "Select all on this page"}
+                    />
+                  </div>
+                </th>
                 <th className="py-3 px-4">Product</th>
                 <th className="py-3 px-4">Category</th>
                 <th className="py-3 px-4 text-center">Fit Style</th>
@@ -442,6 +665,7 @@ export default function AdminProductsPage() {
                 const id = product._id || product.id;
                 const slug = product.slug || id;
                 const isActive = product.isActive !== false;
+                const isSelected = selectedIds.includes(id);
                 const displayImg =
                   product.image ||
                   product.colors?.[0]?.image ||
@@ -453,11 +677,30 @@ export default function AdminProductsPage() {
                   <tr
                     key={id}
                     onClick={() => router.push(`/admin/products/${encodeURIComponent(slug)}`)}
-                    className={`cursor-pointer hover:bg-blue-50/40 transition-colors group ${
-                      !isActive ? 'bg-slate-50/50 opacity-80' : ''
+                    className={`cursor-pointer transition-colors group ${
+                      isSelected
+                        ? 'bg-blue-50/80 hover:bg-blue-50'
+                        : !isActive
+                        ? 'bg-slate-50/50 opacity-80 hover:bg-blue-50/30'
+                        : 'hover:bg-blue-50/40'
                     }`}
                     title="Click row to inspect product specifications"
                   >
+                    {/* First Column: Row Checkbox */}
+                    <td
+                      className="py-3 px-4 w-12 text-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectRow(id)}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600 transition-all"
+                        />
+                      </div>
+                    </td>
+
                     {/* Product Name & Visual */}
                     <td className="py-3 px-4">
                       <div className="flex items-center space-x-3">
@@ -649,6 +892,23 @@ export default function AdminProductsPage() {
         itemName={productToDelete?.name || ''}
         confirmText={isDeleting ? 'Deleting...' : 'Delete Permanently'}
         isLoading={isDeleting}
+        isDanger={true}
+      />
+
+      {/* 5. REUSABLE BULK DELETE CONFIRMATION MODAL */}
+      <ConfirmModal
+        isOpen={bulkDeleteModalOpen}
+        onClose={() => {
+          if (!isBulkOperating) {
+            setBulkDeleteModalOpen(false);
+          }
+        }}
+        onConfirm={handleConfirmBulkDelete}
+        title={`Delete ${selectedIds.length} Products`}
+        message={`Are you sure you want to permanently remove all ${selectedIds.length} selected products? This action will remove them completely from the database and live store.`}
+        itemName={`${selectedIds.length} Selected Products`}
+        confirmText={isBulkOperating ? 'Deleting Selected...' : `Delete ${selectedIds.length} Products`}
+        isLoading={isBulkOperating}
         isDanger={true}
       />
     </div>

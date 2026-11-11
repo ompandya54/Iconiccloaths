@@ -100,6 +100,16 @@ export async function toggleProductStatus(id) {
 }
 
 /**
+ * Admin: Perform bulk actions (delete, activate, deactivate)
+ */
+export async function bulkProductAction(action, ids) {
+  return await apiRequest('/api/products/bulk-action', {
+    method: 'POST',
+    body: JSON.stringify({ action, ids }),
+  });
+}
+
+/**
  * Add review to a product
  */
 export async function addProductReview(id, reviewData) {
