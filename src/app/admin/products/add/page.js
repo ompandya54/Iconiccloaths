@@ -2,8 +2,6 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Sparkles, Package } from 'lucide-react';
 import ProductForm from '@/components/admin/ProductForm';
 import { createProduct } from '@/app/api/productapi';
 import { useAdmin } from '../../layout';
@@ -36,35 +34,7 @@ export default function AddProductPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8 space-y-6">
-      {/* Top Breadcrumb & Header */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2 text-xs font-bold text-slate-400">
-            <Link href="/admin" className="hover:text-blue-600">Admin</Link>
-            <span>/</span>
-            <Link href="/admin/products" className="hover:text-blue-600">Products</Link>
-            <span>/</span>
-            <span className="text-blue-600">Add Product</span>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight font-sans">
-            Add New Product Drop
-          </h1>
-          <p className="text-xs text-slate-500">
-            Publish a new streetwear design with variants, fit details, theme tags, and high-res imagery.
-          </p>
-        </div>
-
-        <Link
-          href="/admin/products"
-          className="flex items-center space-x-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all self-start md:self-auto"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Catalog</span>
-        </Link>
-      </div>
-
-      {/* Main Form Component */}
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
       <ProductForm
         product={null}
         onSave={handleSave}
@@ -74,4 +44,3 @@ export default function AddProductPage() {
     </div>
   );
 }
-

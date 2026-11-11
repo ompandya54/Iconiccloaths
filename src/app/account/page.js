@@ -158,11 +158,10 @@ export default function AccountPage() {
         <div className="flex space-x-2 border-b border-white/10 mb-8 pb-4">
           <button
             onClick={() => setActiveTab('orders')}
-            className={`flex items-center space-x-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
-              activeTab === 'orders'
+            className={`flex items-center space-x-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'orders'
                 ? 'bg-white text-black shadow-lg shadow-white/10'
                 : 'text-gray-400 hover:text-white bg-white/5'
-            }`}
+              }`}
           >
             <Package className="w-4 h-4" />
             <span>My Orders ({orders.length})</span>
@@ -170,11 +169,10 @@ export default function AccountPage() {
 
           <button
             onClick={() => setActiveTab('profile')}
-            className={`flex items-center space-x-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
-              activeTab === 'profile'
+            className={`flex items-center space-x-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'profile'
                 ? 'bg-white text-black shadow-lg shadow-white/10'
                 : 'text-gray-400 hover:text-white bg-white/5'
-            }`}
+              }`}
           >
             <User className="w-4 h-4" />
             <span>Profile & Address</span>
@@ -345,11 +343,10 @@ export default function AccountPage() {
 
             {profileMsg.text && (
               <div
-                className={`mb-6 p-4 rounded-2xl text-xs flex items-center space-x-2.5 ${
-                  profileMsg.type === 'success'
+                className={`mb-6 p-4 rounded-2xl text-xs flex items-center space-x-2.5 ${profileMsg.type === 'success'
                     ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
                     : 'bg-red-500/10 border border-red-500/20 text-red-400'
-                }`}
+                  }`}
               >
                 {profileMsg.type === 'success' ? (
                   <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
@@ -461,3 +458,4 @@ export default function AccountPage() {
     </div>
   );
 }
+

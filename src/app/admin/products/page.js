@@ -452,7 +452,7 @@ export default function AdminProductsPage() {
                 return (
                   <tr
                     key={id}
-                    onClick={() => router.push(`/admin/products/${slug}`)}
+                    onClick={() => router.push(`/admin/products/${encodeURIComponent(slug)}`)}
                     className={`cursor-pointer hover:bg-blue-50/40 transition-colors group ${
                       !isActive ? 'bg-slate-50/50 opacity-80' : ''
                     }`}
@@ -593,7 +593,7 @@ export default function AdminProductsPage() {
                       <div className="flex items-center justify-end space-x-1">
                         {/* Edit Button */}
                         <Link
-                          href={`/admin/products/${slug}/edit`}
+                          href={`/admin/products/${encodeURIComponent(slug)}/edit`}
                           onClick={(e) => e.stopPropagation()}
                           className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="Edit Product"

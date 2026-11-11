@@ -25,7 +25,8 @@ export default function ViewProductPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useAdmin() || {};
-  const slug = params?.slug;
+  const rawSlug = params?.slug;
+  const slug = rawSlug ? decodeURIComponent(rawSlug) : '';
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -171,7 +172,7 @@ export default function ViewProductPage() {
           </Link>
 
           <Link
-            href={`/admin/products/${slug}/edit`}
+            href={`/admin/products/${encodeURIComponent(slug)}/edit`}
             className="flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-blue-500/20 active:scale-95"
           >
             <Pencil className="w-4 h-4" />

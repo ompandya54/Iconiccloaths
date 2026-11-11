@@ -51,10 +51,17 @@ export default function AdminLayout({ children }) {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Check auth session on mount via /api/admin/me
+  // Immediate synchronous token check on mount to prevent layout flash / unmounting
   useEffect(() => {
-    const checkSession = async () => {
-      const token = localStorage.getItem('iconic_admin_token');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('iconic_admin_token') : null;
+    if (token) {
+      setIsAuthenticated(true);
+      setCheckingAuth(false);
+    } else {
+      setCheckingAuth(false);
+    }
+
+    const verifyServerSession = async () => {
       if (token) {
         try {
           const data = await checkAdminSession();
@@ -66,13 +73,12 @@ export default function AdminLayout({ children }) {
             setIsAuthenticated(false);
           }
         } catch (err) {
-          setIsAuthenticated(false);
+          console.warn('Admin session note:', err.message);
         }
       }
-      setCheckingAuth(false);
     };
 
-    checkSession();
+    verifyServerSession();
   }, []);
 
   // Handle Login

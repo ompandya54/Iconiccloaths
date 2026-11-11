@@ -64,3 +64,4 @@ export async function removeFromCustomerWishlist(productId) {
     method: 'DELETE',
   });
 }
+

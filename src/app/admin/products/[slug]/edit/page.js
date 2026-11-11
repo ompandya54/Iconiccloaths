@@ -8,11 +8,87 @@ import ProductForm from '@/components/admin/ProductForm';
 import { getProductById, updateProduct } from '@/app/api/productapi';
 import { useAdmin } from '../../../layout';
 
+// Clean Content-Only Skeleton Loader
+function ProductEditSkeleton() {
+  return (
+    <div className="flex flex-col h-full bg-slate-50 animate-pulse">
+      {/* Header Skeleton */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="w-16 h-8 bg-slate-200 rounded-xl" />
+          <div className="space-y-2">
+            <div className="w-48 h-5 bg-slate-200 rounded" />
+            <div className="w-72 h-3 bg-slate-100 rounded" />
+          </div>
+        </div>
+        <div className="flex space-x-3">
+          <div className="w-20 h-9 bg-slate-200 rounded-xl" />
+          <div className="w-28 h-9 bg-blue-200 rounded-xl" />
+        </div>
+      </div>
+
+      {/* 2-Column Body Skeleton */}
+      <div className="p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column Skeleton */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 space-y-4">
+              <div className="w-32 h-4 bg-slate-200 rounded" />
+              <div className="aspect-[3/4] w-full bg-slate-100 rounded-xl" />
+              <div className="w-full h-9 bg-slate-100 rounded-xl" />
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 space-y-4">
+              <div className="w-36 h-4 bg-slate-200 rounded" />
+              <div className="grid grid-cols-3 gap-3">
+                <div className="aspect-[3/4] bg-slate-100 rounded-xl" />
+                <div className="aspect-[3/4] bg-slate-100 rounded-xl" />
+                <div className="aspect-[3/4] bg-slate-100 rounded-xl" />
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column Skeleton */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 space-y-4">
+              <div className="w-40 h-4 bg-slate-200 rounded" />
+              <div className="w-full h-10 bg-slate-100 rounded-xl" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="h-10 bg-slate-100 rounded-xl" />
+                <div className="h-10 bg-slate-100 rounded-xl" />
+              </div>
+              <div className="w-full h-24 bg-slate-100 rounded-xl" />
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 space-y-4">
+              <div className="w-36 h-4 bg-slate-200 rounded" />
+              <div className="grid grid-cols-3 gap-4">
+                <div className="h-10 bg-slate-100 rounded-xl" />
+                <div className="h-10 bg-slate-100 rounded-xl" />
+                <div className="h-10 bg-slate-100 rounded-xl" />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 space-y-4">
+              <div className="w-48 h-4 bg-slate-200 rounded" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="h-10 bg-slate-100 rounded-xl" />
+                <div className="h-10 bg-slate-100 rounded-xl" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function EditProductPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useAdmin() || {};
-  const slug = params?.slug;
+  const rawSlug = params?.slug;
+  const slug = rawSlug ? decodeURIComponent(rawSlug) : '';
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -65,32 +141,27 @@ export default function EditProductPage() {
     router.push('/admin/products');
   };
 
+  // Skeleton view while loading product data
   if (loading) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
-        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-          Loading Product Editor...
-        </p>
-      </div>
-    );
+    return <ProductEditSkeleton />;
   }
 
+  // Not Found view
   if (!product) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-slate-50 h-full">
         <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-500">
           <Package className="w-8 h-8" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Product Not Found</h2>
+          <h2 className="text-xl font-bold text-slate-900 font-sans">Product Not Found</h2>
           <p className="text-xs text-slate-500 mt-1">
             Cannot find product "{slug}" to edit.
           </p>
         </div>
         <Link
           href="/admin/products"
-          className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-700 transition-colors"
+          className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/20"
         >
           Return to Products Catalog
         </Link>
@@ -99,47 +170,7 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8 space-y-6">
-      {/* Top Header & Breadcrumbs */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2 text-xs font-bold text-slate-400">
-            <Link href="/admin" className="hover:text-blue-600">Admin</Link>
-            <span>/</span>
-            <Link href="/admin/products" className="hover:text-blue-600">Products</Link>
-            <span>/</span>
-            <Link href={`/admin/products/${slug}`} className="hover:text-blue-600 font-mono">
-              {product.name}
-            </Link>
-            <span>/</span>
-            <span className="text-blue-600">Edit</span>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight font-sans">
-            Edit: {product.name}
-          </h1>
-          <p className="text-xs text-slate-500">
-            Update pricing, fit style, theme, color swatches, stock, or promotional badges.
-          </p>
-        </div>
-
-        <div className="flex items-center space-x-3">
-          <Link
-            href={`/admin/products/${slug}`}
-            className="flex items-center space-x-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>View Specs</span>
-          </Link>
-          <Link
-            href="/admin/products"
-            className="flex items-center space-x-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
-          >
-            <span>Catalog</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* Main ProductForm in Edit Mode */}
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
       <ProductForm
         product={product}
         onSave={handleSave}
@@ -149,4 +180,3 @@ export default function EditProductPage() {
     </div>
   );
 }
-

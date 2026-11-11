@@ -22,7 +22,8 @@ export async function getProducts(params = {}) {
  * Get single product by ID or Slug
  */
 export async function getProductById(id) {
-  return await apiRequest(`/api/products/${id}`);
+  if (!id) return null;
+  return await apiRequest(`/api/products/${encodeURIComponent(id)}`);
 }
 
 /**

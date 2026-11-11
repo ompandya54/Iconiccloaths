@@ -6,15 +6,18 @@ import {
   Check,
   Plus,
   Trash2,
-  Upload,
   Image as ImageIcon,
-  DollarSign,
-  Package,
   Layers,
   Sparkles,
-  Info,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  RefreshCw,
+  Tag,
+  DollarSign,
+  Package,
+  Sliders,
+  ExternalLink
 } from 'lucide-react';
 
 const STANDARD_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
@@ -64,10 +67,11 @@ const BADGE_OPTIONS = [
   'HOT',
   'FLAT 40% OFF',
   'POPULAR',
+  'ARCHIVE',
 ];
 
 export default function ProductForm({
-  product = null, // null for Add, populated object for Edit
+  product = null,
   onSave,
   onCancel,
   isSubmitting = false,
@@ -98,22 +102,24 @@ export default function ProductForm({
     isActive: true,
     isFeatured: false,
     isBestseller: false,
-    isNewArrival: true,
   });
 
-  const [newColorName, setNewColorName] = useState('');
-  const [newColorHex, setNewColorHex] = useState('#000000');
-  const [newColorImage, setNewColorImage] = useState('');
+  const [newGalleryUrl, setNewGalleryUrl] = useState('');
+  const [newColor, setNewColor] = useState({ name: '', hex: '#000000', image: '' });
 
-  // Pre-fill on Edit
+  // Pre-fill form when product prop is passed
   useEffect(() => {
     if (product) {
+      const initialImages = Array.isArray(product.images) && product.images.length > 0
+        ? product.images
+        : (product.image ? [product.image] : []);
+
       setFormData({
         name: product.name || '',
         slug: product.slug || '',
         description: product.description || '',
-        price: product.price ?? '',
-        originalPrice: product.originalPrice ?? '',
+        price: product.price !== undefined ? String(product.price) : '',
+        originalPrice: product.originalPrice !== undefined ? String(product.originalPrice) : '',
         category: product.category || 'oversized',
         categoryLabel: product.categoryLabel || 'Oversized Streetwear',
         subcategory: product.subcategory || 'Back Print',
@@ -121,71 +127,98 @@ export default function ProductForm({
         theme: product.theme || 'Street',
         material: product.material || '100% French Terry (240 GSM)',
         badge: product.badge || 'NEW DROP',
-        stock: product.stock ?? 50,
-        image: product.image || product.colors?.[0]?.image || '',
-        images: Array.isArray(product.images) ? product.images : [],
+        stock: product.stock !== undefined ? product.stock : 50,
+        image: product.image || initialImages[0] || '',
+        images: initialImages,
         sizes: Array.isArray(product.sizes) && product.sizes.length > 0 ? product.sizes : ['S', 'M', 'L', 'XL'],
-        colors: Array.isArray(product.colors) && product.colors.length > 0
-          ? product.colors
-          : [{ name: 'Black', hex: '#0a0a0a', image: product.image || '' }],
-        isActive: product.isActive !== undefined ? product.isActive : true,
+        colors: Array.isArray(product.colors) && product.colors.length > 0 ? product.colors : [
+          { name: 'Black', hex: '#0a0a0a', image: '' }
+        ],
+        isActive: product.isActive !== false,
         isFeatured: Boolean(product.isFeatured),
         isBestseller: Boolean(product.isBestseller),
-        isNewArrival: Boolean(product.isNewArrival),
       });
     }
   }, [product]);
 
-  // Handle Input Changes
+  // Generic field updater
   const handleChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Auto-generate URL slug from Product Name
+  const generateSlugFromName = () => {
+    if (!formData.name) return;
+    const cleanSlug = formData.name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    handleChange('slug', cleanSlug);
+  };
+
+  // Add Image to Gallery
+  const handleAddGalleryImage = (e) => {
+    e?.preventDefault();
+    const url = newGalleryUrl.trim();
+    if (!url) return;
+
     setFormData((prev) => {
-      const updated = { ...prev, [field]: value };
+      const updated = [...prev.images, url];
+      return {
+        ...prev,
+        images: updated,
+        image: prev.image || url, // If no main cover image set yet, make this cover
+      };
+    });
+    setNewGalleryUrl('');
+  };
 
-      // Auto-generate slug from name if adding
-      if (field === 'name' && !isEdit) {
-        updated.slug = value
-          .toLowerCase()
-          .trim()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/[\s_-]+/g, '-')
-          .replace(/^-+|-+$/g, '');
+  // Remove Image from Gallery
+  const handleRemoveGalleryImage = (indexToRemove) => {
+    setFormData((prev) => {
+      const removedImage = prev.images[indexToRemove];
+      const updatedImages = prev.images.filter((_, idx) => idx !== indexToRemove);
+
+      // If the removed image was the active cover, switch to next available image
+      let updatedCover = prev.image;
+      if (prev.image === removedImage) {
+        updatedCover = updatedImages[0] || '';
       }
 
-      // Sync categoryLabel when category changes
-      if (field === 'category') {
-        const found = CATEGORY_OPTIONS.find((c) => c.value === value);
-        if (found) updated.categoryLabel = found.label;
-      }
-
-      return updated;
+      return {
+        ...prev,
+        images: updatedImages,
+        image: updatedCover,
+      };
     });
   };
 
-  // Toggle Size selection
-  const toggleSize = (size) => {
+  // Set as Primary Cover Image
+  const handleSetAsCover = (url) => {
+    handleChange('image', url);
+  };
+
+  // Toggle Size
+  const handleToggleSize = (size) => {
     setFormData((prev) => {
       const exists = prev.sizes.includes(size);
-      const updatedSizes = exists
-        ? prev.sizes.filter((s) => s !== size)
-        : [...prev.sizes, size];
-      return { ...prev, sizes: updatedSizes };
+      return {
+        ...prev,
+        sizes: exists ? prev.sizes.filter((s) => s !== size) : [...prev.sizes, size],
+      };
     });
   };
 
   // Add Color Swatch
   const handleAddColor = () => {
-    if (!newColorName.trim()) return;
-    const newSwatch = {
-      name: newColorName.trim(),
-      hex: newColorHex,
-      image: newColorImage.trim() || formData.image,
-    };
+    if (!newColor.name.trim()) return;
     setFormData((prev) => ({
       ...prev,
-      colors: [...prev.colors, newSwatch],
+      colors: [...prev.colors, { ...newColor, name: newColor.name.trim() }],
     }));
-    setNewColorName('');
-    setNewColorImage('');
+    setNewColor({ name: '', hex: '#000000', image: '' });
   };
 
   // Remove Color Swatch
@@ -202,49 +235,72 @@ export default function ProductForm({
     if (!formData.name.trim()) return alert('Please enter product name');
     if (!formData.price) return alert('Please enter product price');
 
+    const cleanSlug = formData.slug
+      ? formData.slug.toLowerCase().trim().replace(/[\s_]+/g, '-')
+      : formData.name.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-');
+
+    const primaryImage = formData.image || formData.images[0] || '/images/prod_minimal.jpg';
+    const allImages = formData.images.length > 0 ? formData.images : [primaryImage];
+
     const payload = {
       ...formData,
+      slug: cleanSlug,
       price: Number(formData.price),
       originalPrice: formData.originalPrice ? Number(formData.originalPrice) : undefined,
       stock: Number(formData.stock) || 0,
-      image: formData.image || formData.colors?.[0]?.image || '/images/prod_minimal.jpg',
-      images: formData.images.length > 0 ? formData.images : [formData.image || '/images/prod_minimal.jpg'],
+      image: primaryImage,
+      images: allImages,
     };
 
     onSave(payload);
   };
 
-  // Calculated discount
+  // Calculated discount percentage
   const discountPercent =
     formData.originalPrice && Number(formData.originalPrice) > Number(formData.price)
       ? Math.round(((Number(formData.originalPrice) - Number(formData.price)) / Number(formData.originalPrice)) * 100)
       : 0;
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col h-full bg-slate-50 overflow-hidden">
-      {/* Top Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between flex-shrink-0 z-20 shadow-sm">
-        <div className="flex items-center space-x-4">
+    <form onSubmit={handleSubmit} className="flex flex-col h-full bg-slate-50">
+      {/* 1. UNIFIED TOP HEADER */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sticky top-0 z-30 shadow-sm">
+        <div className="flex items-center space-x-3 sm:space-x-4">
           <button
             type="button"
             onClick={onCancel}
             className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center space-x-1 text-xs font-semibold"
+            title="Back to Catalog"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back to Products</span>
+            <span className="hidden sm:inline">Back</span>
           </button>
+
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-              {isEdit ? `Edit: ${formData.name || 'Product'}` : 'Create New Product Drop'}
-            </h1>
-            <p className="text-xs text-slate-500">
-              {isEdit ? 'Update details, pricing, inventory and visuals' : 'Add authentic streetwear apparel to your catalog'}
+            <div className="flex items-center space-x-2.5">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 font-sans tracking-tight">
+                {isEdit ? `Edit: ${formData.name || 'Product'}` : 'Add New Product Drop'}
+              </h1>
+              <span
+                className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                  formData.isActive
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                }`}
+              >
+                {formData.isActive ? 'Active' : 'Draft / Inactive'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isEdit
+                ? 'Update pricing, fit style, theme, color swatches, stock, or visuals'
+                : 'Publish a new authentic streetwear apparel to your catalog'}
             </p>
           </div>
         </div>
 
-        {/* Action Buttons Top */}
-        <div className="flex items-center space-x-3">
+        {/* Action Buttons */}
+        <div className="flex items-center space-x-3 w-full sm:w-auto justify-end">
           <button
             type="button"
             onClick={onCancel}
@@ -256,7 +312,7 @@ export default function ProductForm({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition-all flex items-center space-x-2 disabled:opacity-50"
+            className="px-6 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition-all flex items-center space-x-2 disabled:opacity-50"
           >
             {isSubmitting ? (
               <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -268,436 +324,579 @@ export default function ProductForm({
         </div>
       </div>
 
-      {/* Main Scrollable Body */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 max-w-5xl mx-auto w-full">
-        {/* CARD 1: Basic Information */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
-            <Package className="w-5 h-5 text-blue-600" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">General Information</h2>
-          </div>
+      {/* 2. MAIN 2-COLUMN BODY LAYOUT */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* ======================================================== */}
+          {/* LEFT COLUMN: PRODUCT IMAGES (ADD / REMOVE / COVER)       */}
+          {/* ======================================================== */}
+          <div className="lg:col-span-5 space-y-6">
+            
+            {/* Primary Cover Image Card */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center space-x-2">
+                  <ImageIcon className="w-4 h-4 text-blue-600" />
+                  <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    Primary Cover Image
+                  </h2>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md">
+                  Main Thumbnail
+                </span>
+              </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            {/* Name */}
-            <div className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Product Name <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
-                placeholder="e.g. Minimal Logo Heavyweight Boxy Tee"
-                required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
-              />
-            </div>
+              {/* Cover Preview Box */}
+              <div className="relative aspect-[3/4] w-full max-w-sm mx-auto bg-slate-100 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center group shadow-inner">
+                {formData.image ? (
+                  <>
+                    <img
+                      src={formData.image}
+                      alt="Product Cover"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => handleChange('image', '')}
+                        className="p-2 bg-rose-600 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 shadow-lg hover:bg-rose-700"
+                        title="Remove cover image"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center p-6 space-y-2">
+                    <ImageIcon className="w-10 h-10 text-slate-300 mx-auto" />
+                    <p className="text-xs font-medium text-slate-500">No cover image selected</p>
+                    <p className="text-[10px] text-slate-400">Paste URL below or select from gallery</p>
+                  </div>
+                )}
+              </div>
 
-            {/* Slug */}
-            <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                URL Slug
-              </label>
-              <input
-                type="text"
-                value={formData.slug}
-                onChange={(e) => handleChange('slug', e.target.value)}
-                placeholder="e.g. minimal-logo-heavyweight-boxy-tee"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono text-xs"
-              />
-            </div>
-
-            {/* Badge */}
-            <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Badge / Ribbon Tag
-              </label>
-              <select
-                value={formData.badge}
-                onChange={(e) => handleChange('badge', e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-semibold"
-              >
-                {BADGE_OPTIONS.map((b) => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Description */}
-            <div className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Product Description
-              </label>
-              <textarea
-                rows={3}
-                value={formData.description}
-                onChange={(e) => handleChange('description', e.target.value)}
-                placeholder="Crafted from luxury 240 GSM organic French Terry cotton with intentional boxy drape..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all leading-relaxed"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* CARD 2: Streetwear Categorization & Distinct Columns */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
-            <Layers className="w-5 h-5 text-blue-600" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-              Categorization & Attributes (Fit, Theme & Material)
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-            {/* Category */}
-            <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Category
-              </label>
-              <select
-                value={formData.category}
-                onChange={(e) => handleChange('category', e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-semibold"
-              >
-                {CATEGORY_OPTIONS.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Subcategory */}
-            <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Subcategory / Print Type
-              </label>
-              <input
-                type="text"
-                value={formData.subcategory}
-                onChange={(e) => handleChange('subcategory', e.target.value)}
-                placeholder="Back Print, Front Graphic, Solid, etc."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-              />
-            </div>
-
-            {/* FIT (Distinct attribute!) */}
-            <div>
-              <label className="block font-bold text-purple-700 uppercase tracking-wider mb-1.5 flex items-center space-x-1">
-                <span>Fit Silhouette</span>
-                <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.2 rounded font-mono">Separate Col</span>
-              </label>
-              <select
-                value={formData.fit}
-                onChange={(e) => handleChange('fit', e.target.value)}
-                className="w-full bg-purple-50/40 border border-purple-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none transition-all font-semibold"
-              >
-                {FIT_OPTIONS.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* THEME (Distinct attribute!) */}
-            <div>
-              <label className="block font-bold text-cyan-700 uppercase tracking-wider mb-1.5 flex items-center space-x-1">
-                <span>Aesthetic Theme</span>
-                <span className="text-[10px] bg-cyan-100 text-cyan-800 px-1.5 py-0.2 rounded font-mono">Separate Col</span>
-              </label>
-              <select
-                value={formData.theme}
-                onChange={(e) => handleChange('theme', e.target.value)}
-                className="w-full bg-cyan-50/40 border border-cyan-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100 outline-none transition-all font-semibold"
-              >
-                {THEME_OPTIONS.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Material */}
-            <div className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Fabric & GSM Material
-              </label>
-              <div className="flex gap-2">
-                <select
-                  value={formData.material}
-                  onChange={(e) => handleChange('material', e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                >
-                  {MATERIAL_OPTIONS.map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
+              {/* Cover Image URL Input */}
+              <div className="text-xs">
+                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Cover Image URL
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="url"
+                    value={formData.image}
+                    onChange={(e) => handleChange('image', e.target.value)}
+                    placeholder="https://images.unsplash.com/photo-..."
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono text-[11px]"
+                  />
+                  {formData.images.length > 0 && formData.image !== formData.images[0] && (
+                    <button
+                      type="button"
+                      onClick={() => handleChange('image', formData.images[0])}
+                      className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-wider flex-shrink-0"
+                      title="Use 1st gallery photo as cover"
+                    >
+                      Use Gallery #1
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* CARD 3: Pricing, Inventory & Status */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
-            <DollarSign className="w-5 h-5 text-blue-600" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Pricing, Inventory & Visibility</h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-            {/* Price */}
-            <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Selling Price (₹) <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="number"
-                value={formData.price}
-                onChange={(e) => handleChange('price', e.target.value)}
-                placeholder="999"
-                required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono font-bold text-sm"
-              />
-            </div>
-
-            {/* Original Price */}
-            <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Original MRP (₹)
-              </label>
-              <input
-                type="number"
-                value={formData.originalPrice}
-                onChange={(e) => handleChange('originalPrice', e.target.value)}
-                placeholder="1499"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono font-semibold"
-              />
-              {discountPercent > 0 && (
-                <span className="text-[11px] text-emerald-600 font-bold mt-1 block">
-                  {discountPercent}% OFF auto-badge
+            {/* Gallery Images Card: Add & Remove multiple */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center space-x-2">
+                  <Layers className="w-4 h-4 text-blue-600" />
+                  <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    Gallery Images ({formData.images.length})
+                  </h2>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  Multiple angles & detail shots
                 </span>
+              </div>
+
+              {/* Add New Gallery Image Input */}
+              <div className="text-xs">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="url"
+                    value={newGalleryUrl}
+                    onChange={(e) => setNewGalleryUrl(e.target.value)}
+                    placeholder="Paste additional image URL..."
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono text-[11px]"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddGalleryImage();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddGalleryImage}
+                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] flex items-center space-x-1 shadow-sm flex-shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Gallery Thumbnails Grid with 1-Click Remove */}
+              {formData.images.length === 0 ? (
+                <div className="p-6 text-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-slate-400 text-xs">
+                  No additional gallery images added yet.
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-3">
+                  {formData.images.map((imgUrl, idx) => {
+                    const isCover = formData.image === imgUrl;
+                    return (
+                      <div
+                        key={idx}
+                        className={`relative aspect-[3/4] rounded-xl overflow-hidden border group bg-slate-100 shadow-sm ${
+                          isCover ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200'
+                        }`}
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`Gallery ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+
+                        {/* Top Cover Badge if active */}
+                        {isCover && (
+                          <span className="absolute top-1.5 left-1.5 bg-blue-600 text-white text-[8px] font-bold uppercase px-1.5 py-0.5 rounded shadow">
+                            Cover
+                          </span>
+                        )}
+
+                        {/* Hover Overlay with Action Buttons */}
+                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-1.5 space-y-1.5">
+                          {!isCover && (
+                            <button
+                              type="button"
+                              onClick={() => handleSetAsCover(imgUrl)}
+                              className="w-full py-1 bg-white text-slate-900 rounded text-[9px] font-bold uppercase tracking-wider hover:bg-slate-100 shadow"
+                            >
+                              Set Cover
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveGalleryImage(idx)}
+                            className="w-full py-1 bg-rose-600 text-white rounded text-[9px] font-bold uppercase tracking-wider hover:bg-rose-700 shadow flex items-center justify-center space-x-1"
+                            title="Remove image from gallery"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
 
-            {/* Stock */}
-            <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Inventory Stock
-              </label>
-              <input
-                type="number"
-                value={formData.stock}
-                onChange={(e) => handleChange('stock', e.target.value)}
-                placeholder="50"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono font-semibold"
-              />
-            </div>
-
-            {/* Active Toggle (Crucial for admin seeing/setting inactive items!) */}
-            <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 flex flex-col justify-between">
-              <span className="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-                Product Status
-              </span>
-              <label className="relative inline-flex items-center cursor-pointer mt-1">
-                <input
-                  type="checkbox"
-                  checked={formData.isActive}
-                  onChange={(e) => handleChange('isActive', e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
-                <span className="ml-2 text-xs font-bold text-slate-800">
-                  {formData.isActive ? (
-                    <span className="text-emerald-700 font-bold">Active (Live)</span>
-                  ) : (
-                    <span className="text-slate-500 font-bold">Inactive (Draft)</span>
-                  )}
+            {/* Color Swatches Management */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
+                  <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    Color Variants & Swatches
+                  </h2>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  {formData.colors.length} Available
                 </span>
-              </label>
-            </div>
-          </div>
-
-          {/* Featured Flags */}
-          <div className="pt-3 border-t border-slate-100 flex flex-wrap gap-4 text-xs font-semibold">
-            <label className="flex items-center space-x-2 cursor-pointer bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-blue-50 transition-colors">
-              <input
-                type="checkbox"
-                checked={formData.isBestseller}
-                onChange={(e) => handleChange('isBestseller', e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-              />
-              <span className="text-slate-800">Mark as Bestseller</span>
-            </label>
-
-            <label className="flex items-center space-x-2 cursor-pointer bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-blue-50 transition-colors">
-              <input
-                type="checkbox"
-                checked={formData.isFeatured}
-                onChange={(e) => handleChange('isFeatured', e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-              />
-              <span className="text-slate-800">Feature on Homepage</span>
-            </label>
-
-            <label className="flex items-center space-x-2 cursor-pointer bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-blue-50 transition-colors">
-              <input
-                type="checkbox"
-                checked={formData.isNewArrival}
-                onChange={(e) => handleChange('isNewArrival', e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-              />
-              <span className="text-slate-800">Mark as New Arrival</span>
-            </label>
-          </div>
-        </div>
-
-        {/* CARD 4: Visuals & Color Swatches */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
-            <ImageIcon className="w-5 h-5 text-blue-600" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Product Visuals & Color Swatches</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
-            {/* Primary Image Input & Preview */}
-            <div className="md:col-span-2 space-y-3">
-              <div>
-                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Primary Cover Image URL
-                </label>
-                <input
-                  type="text"
-                  value={formData.image}
-                  onChange={(e) => handleChange('image', e.target.value)}
-                  placeholder="https://images.unsplash.com/... or /images/prod_minimal.jpg"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono text-xs"
-                />
               </div>
 
-              {/* Color Swatches Management */}
-              <div className="pt-2">
-                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  Color Swatches ({formData.colors.length})
-                </label>
-
-                {/* Existing swatches list */}
-                <div className="flex flex-wrap gap-2.5 mb-3">
-                  {formData.colors.map((color, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                    >
+              {/* Existing Swatches */}
+              <div className="space-y-2">
+                {formData.colors.map((c, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs"
+                  >
+                    <div className="flex items-center space-x-2.5">
                       <span
-                        className="w-4 h-4 rounded-full border border-slate-300 flex-shrink-0"
-                        style={{ backgroundColor: color.hex }}
+                        className="w-5 h-5 rounded-full border border-slate-300 shadow-inner flex-shrink-0"
+                        style={{ backgroundColor: c.hex }}
                       />
-                      <span className="text-slate-800">{color.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveColor(idx)}
-                        className="text-slate-400 hover:text-rose-600 ml-1 p-0.5"
-                        title="Remove color"
-                      >
-                        ×
-                      </button>
+                      <div>
+                        <span className="font-bold text-slate-900 block">{c.name}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{c.hex}</span>
+                      </div>
                     </div>
-                  ))}
-                </div>
 
-                {/* Add Color Form */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200 items-end">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Color Name</label>
-                    <input
-                      type="text"
-                      value={newColorName}
-                      onChange={(e) => setNewColorName(e.target.value)}
-                      placeholder="e.g. Vintage Wash"
-                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 outline-none"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveColor(i)}
+                      className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                      title="Remove color"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Color Hex</label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="color"
-                        value={newColorHex}
-                        onChange={(e) => setNewColorHex(e.target.value)}
-                        className="w-7 h-7 rounded border border-slate-300 cursor-pointer p-0.5 bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={newColorHex}
-                        onChange={(e) => setNewColorHex(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 font-mono"
-                      />
-                    </div>
-                  </div>
+                ))}
+              </div>
+
+              {/* Add Color Form */}
+              <div className="pt-2 border-t border-slate-100 space-y-2 text-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                  Add New Color Swatch
+                </span>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="color"
+                    value={newColor.hex}
+                    onChange={(e) => setNewColor({ ...newColor, hex: e.target.value })}
+                    className="w-9 h-9 p-0.5 rounded-lg border border-slate-300 cursor-pointer bg-white"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Color Name (e.g. Vintage Washed Olive)"
+                    value={newColor.name}
+                    onChange={(e) => setNewColor({ ...newColor, name: e.target.value })}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs outline-none focus:bg-white focus:border-blue-500"
+                  />
                   <button
                     type="button"
                     onClick={handleAddColor}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors flex items-center justify-center space-x-1"
+                    className="px-3.5 py-2 bg-slate-900 text-white rounded-xl font-bold uppercase text-[10px] tracking-wider hover:bg-slate-800"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Color</span>
+                    Add
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Live Image Preview Card */}
-            <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                Live Card Preview
-              </span>
-              <div className="relative aspect-[3/4] w-40 rounded-xl overflow-hidden bg-slate-200 border border-slate-300 shadow-sm">
-                <img
-                  src={formData.image || formData.colors?.[0]?.image || '/images/prod_minimal.jpg'}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = '/images/prod_minimal.jpg';
-                  }}
-                />
-                <span className="absolute top-2 left-2 bg-blue-600 text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shadow">
-                  {formData.badge}
-                </span>
+          </div>
+
+          {/* ======================================================== */}
+          {/* RIGHT COLUMN: PRODUCT DETAILS & ATTRIBUTES              */}
+          {/* ======================================================== */}
+          <div className="lg:col-span-7 space-y-6">
+
+            {/* 1. General Details */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
+                <Package className="w-4 h-4 text-blue-600" />
+                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Product Details
+                </h2>
               </div>
-              <span className="text-xs font-bold text-slate-800 mt-2 truncate max-w-[160px] text-center">
-                {formData.name || 'Product Title'}
-              </span>
-              <span className="text-xs font-mono font-bold text-blue-600">
-                ₹{formData.price || '0'}
-              </span>
+
+              <div className="space-y-4 text-xs">
+                {/* Product Name */}
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Product Title / Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleChange('name', e.target.value)}
+                    placeholder="e.g. Somewhere Better Heavyweight Boxy Tee"
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-semibold text-sm"
+                  />
+                </div>
+
+                {/* Slug with Auto-generate */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="font-bold text-slate-700 uppercase tracking-wider">
+                        URL Slug
+                      </label>
+                      <button
+                        type="button"
+                        onClick={generateSlugFromName}
+                        className="text-[10px] text-blue-600 hover:text-blue-800 font-bold uppercase tracking-wider"
+                      >
+                        Auto-Generate
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.slug}
+                      onChange={(e) => handleChange('slug', e.target.value)}
+                      placeholder="somewhere-better-heavyweight-boxy-tee"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono text-xs"
+                    />
+                  </div>
+
+                  {/* Badge / Ribbon */}
+                  <div>
+                    <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Badge / Promotional Tag
+                    </label>
+                    <select
+                      value={formData.badge}
+                      onChange={(e) => handleChange('badge', e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-semibold"
+                    >
+                      {BADGE_OPTIONS.map((b) => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Product Description & Concept
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={formData.description}
+                    onChange={(e) => handleChange('description', e.target.value)}
+                    placeholder="Crafted from luxury 240 GSM organic French Terry cotton with intentional oversized drape and durable screen print..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all leading-relaxed"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* CARD 5: Size Matrix */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
-            <Sparkles className="w-5 h-5 text-blue-600" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Available Sizes</h2>
+            {/* 2. Pricing & Inventory */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
+                <DollarSign className="w-4 h-4 text-blue-600" />
+                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Pricing & Inventory
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                {/* Selling Price */}
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Selling Price (₹) <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3.5 text-slate-400 font-bold">₹</span>
+                    <input
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => handleChange('price', e.target.value)}
+                      placeholder="1899"
+                      required
+                      min={0}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3.5 py-2.5 text-slate-900 font-bold focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Original MRP */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="font-bold text-slate-700 uppercase tracking-wider">
+                      MRP (₹)
+                    </label>
+                    {discountPercent > 0 && (
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                        {discountPercent}% OFF
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3.5 text-slate-400 font-bold">₹</span>
+                    <input
+                      type="number"
+                      value={formData.originalPrice}
+                      onChange={(e) => handleChange('originalPrice', e.target.value)}
+                      placeholder="2499"
+                      min={0}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Stock Quantity */}
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Total Stock (Units)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.stock}
+                    onChange={(e) => handleChange('stock', e.target.value)}
+                    placeholder="50"
+                    min={0}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-bold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Categorization & Streetwear Attributes */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
+                <Tag className="w-4 h-4 text-blue-600" />
+                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Categorization & Fashion Attributes
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                {/* Category */}
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Category
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => handleChange('category', e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-semibold"
+                  >
+                    {CATEGORY_OPTIONS.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Subcategory */}
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Subcategory / Style
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.subcategory}
+                    onChange={(e) => handleChange('subcategory', e.target.value)}
+                    placeholder="e.g. Back Print, Acid Wash, Minimalist"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-medium"
+                  />
+                </div>
+
+                {/* Fit Style */}
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Fit Style Attribute
+                  </label>
+                  <select
+                    value={formData.fit}
+                    onChange={(e) => handleChange('fit', e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-semibold"
+                  >
+                    {FIT_OPTIONS.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Theme Attribute */}
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Streetwear Theme Attribute
+                  </label>
+                  <select
+                    value={formData.theme}
+                    onChange={(e) => handleChange('theme', e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-semibold"
+                  >
+                    {THEME_OPTIONS.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Fabric Material */}
+                <div className="sm:col-span-2">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Fabric & Material Specs
+                  </label>
+                  <select
+                    value={formData.material}
+                    onChange={(e) => handleChange('material', e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-semibold"
+                  >
+                    {MATERIAL_OPTIONS.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Sizes & Visibility Controls */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
+                <Sliders className="w-4 h-4 text-blue-600" />
+                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Sizes & Display Status
+                </h2>
+              </div>
+
+              {/* Sizes Selector */}
+              <div className="space-y-2">
+                <label className="block font-bold text-slate-700 uppercase tracking-wider text-xs">
+                  Available Sizes
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {STANDARD_SIZES.map((size) => {
+                    const isSelected = formData.sizes.includes(size);
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => handleToggleSize(size)}
+                        className={`w-11 h-10 rounded-xl text-xs font-bold transition-all border ${
+                          isSelected
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                {/* Active Switch */}
+                <label className="flex items-center space-x-3 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100/60 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.isActive}
+                    onChange={(e) => handleChange('isActive', e.target.checked)}
+                    className="w-4 h-4 accent-blue-600 rounded"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-900 block">Active in Store</span>
+                    <span className="text-[10px] text-slate-500">Visible for customer purchase</span>
+                  </div>
+                </label>
+
+                {/* Bestseller Switch */}
+                <label className="flex items-center space-x-3 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100/60 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.isBestseller}
+                    onChange={(e) => handleChange('isBestseller', e.target.checked)}
+                    className="w-4 h-4 accent-blue-600 rounded"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-900 block">Featured Bestseller</span>
+                    <span className="text-[10px] text-slate-500">Show on homepage curated list</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {STANDARD_SIZES.map((size) => {
-              const isSelected = formData.sizes.includes(size);
-              return (
-                <button
-                  key={size}
-                  type="button"
-                  onClick={() => toggleSize(size)}
-                  className={`w-14 h-12 rounded-xl text-xs font-mono font-bold uppercase transition-all flex items-center justify-center border shadow-sm ${
-                    isSelected
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/20 scale-105'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-slate-50'
-                  }`}
-                >
-                  {size}
-                </button>
-              );
-            })}
-          </div>
         </div>
       </div>
     </form>
   );
 }
-
