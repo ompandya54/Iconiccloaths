@@ -89,8 +89,8 @@ export default function Navbar({
     <>
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
-            ? 'bg-[#08080a]/90 backdrop-blur-md border-b border-white/10 py-4 shadow-2xl'
-            : 'bg-gradient-to-b from-black/80 via-black/20 to-transparent py-5 sm:py-6'
+          ? 'bg-[#08080a]/90 backdrop-blur-md border-b border-white/10 py-4 shadow-2xl'
+          : 'bg-gradient-to-b from-black/80 via-black/20 to-transparent py-5 sm:py-6'
           }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between relative">
@@ -104,8 +104,8 @@ export default function Navbar({
             {/* Animated CLOTHS subtext: collapses & slides up smoothly on scroll */}
             <span
               className={`font-sans text-[9px] sm:text-[11px] font-medium tracking-[0.45em] text-gray-300 leading-tight uppercase w-full flex justify-between transition-all duration-300 ease-in-out overflow-hidden ${scrolled
-                  ? 'max-h-0 opacity-0 -translate-y-1 mt-0 pointer-events-none'
-                  : 'max-h-5 opacity-100 translate-y-0 mt-1'
+                ? 'max-h-0 opacity-0 -translate-y-1 mt-0 pointer-events-none'
+                : 'max-h-5 opacity-100 translate-y-0 mt-1'
                 }`}
             >
               <span>C</span><span>L</span><span>O</span><span>T</span><span>H</span><span>S</span>
@@ -117,8 +117,8 @@ export default function Navbar({
             <Link
               href="/"
               className={`text-xs font-bold uppercase tracking-widest pb-1 transition-colors ${activePage === 'home'
-                  ? 'text-white border-b-2 border-white'
-                  : 'text-gray-300 hover:text-white border-b-2 border-transparent hover:border-gray-500'
+                ? 'text-white border-b-2 border-white'
+                : 'text-gray-300 hover:text-white border-b-2 border-transparent hover:border-gray-500'
                 }`}
             >
               HOME
@@ -126,13 +126,13 @@ export default function Navbar({
             <Link
               href="/shop"
               className={`text-xs font-bold uppercase tracking-widest pb-1 transition-colors ${activePage === 'shop'
-                  ? 'text-white border-b-2 border-white'
-                  : 'text-gray-300 hover:text-white border-b-2 border-transparent hover:border-gray-500'
+                ? 'text-white border-b-2 border-white'
+                : 'text-gray-300 hover:text-white border-b-2 border-transparent hover:border-gray-500'
                 }`}
             >
               SHOP
             </Link>
-            <Link
+            {/* <Link
               href="/collections"
               className={`text-xs font-bold uppercase tracking-widest pb-1 transition-colors ${activePage === 'collections'
                   ? 'text-white border-b-2 border-white'
@@ -140,7 +140,7 @@ export default function Navbar({
                 }`}
             >
               COLLECTIONS
-            </Link>
+            </Link> */}
             <Link
               href="/#story"
               className="text-xs font-bold uppercase tracking-widest text-gray-300 hover:text-white transition-colors pb-1 border-b-2 border-transparent hover:border-gray-500"
@@ -166,8 +166,8 @@ export default function Navbar({
             >
               <div
                 className={`flex items-center transition-all duration-300 ease-in-out rounded-full ${inlineSearchActive
-                    ? 'w-44 sm:w-56 bg-white/10 border border-white/20 px-3 py-1.5'
-                    : 'w-8 bg-transparent border border-transparent p-1'
+                  ? 'w-44 sm:w-56 bg-white/10 border border-white/20 px-3 py-1.5'
+                  : 'w-8 bg-transparent border border-transparent p-1'
                   }`}
               >
                 <button
