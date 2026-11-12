@@ -3,23 +3,24 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  LayoutTemplate,
   Plus,
   Trash2,
   Pencil,
+  Eye,
+  CheckCircle2,
   Clock,
   Sparkles,
   ArrowRight,
-  CheckCircle2,
-  XCircle,
-  Eye,
+  SlidersHorizontal,
   Tag,
   Percent,
-  SlidersHorizontal,
   Flame,
+  LayoutTemplate,
   Calendar,
   Layers,
-  X
+  X,
+  Filter,
+  Check
 } from 'lucide-react';
 import { useAdmin } from '../layout';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -29,16 +30,42 @@ import {
   updateSection,
   toggleSectionStatus,
   deleteSection,
+  getAttributes,
 } from '@/app/api/adminapi';
 
-const FILTER_TYPES = [
-  { value: 'discount', label: 'Minimum Discount %', hint: 'e.g. 40 (products with 40% discount or higher)', icon: Percent },
-  { value: 'underPrice', label: 'Under Max Price (₹)', hint: 'e.g. 999 (products priced ₹999 or lower)', icon: Tag },
-  { value: 'category', label: 'Product Category', hint: 'e.g. Oversized Tees, Graphic Streetwear, Hoodies', icon: Layers },
-  { value: 'fit', label: 'Fit Style Silhouette', hint: 'e.g. Oversized Fit, Boxy Cut, Relaxed Fit', icon: SlidersHorizontal },
-  { value: 'theme', label: 'Aesthetic / Theme', hint: 'e.g. Streetwear, Vintage Nostalgia, Typography, Anime', icon: Sparkles },
-  { value: 'badge', label: 'Marketing Badge Tag', hint: 'e.g. BESTSELLER, NEW DROP, LIMITED, HOT', icon: Flame },
-  { value: 'material', label: 'Fabric / Material', hint: 'e.g. French Terry Cotton, 240 GSM, Fleece', icon: Tag },
+const DEFAULT_CATEGORIES = [
+  'Oversized Tees',
+  'Graphic Streetwear',
+  'Heavyweight Essentials',
+  'Acid Wash Capsule',
+  'Hoodies & Sweats',
+  'Cargo Pants & Bottoms',
+];
+
+const DEFAULT_FITS = [
+  'Oversized Fit',
+  'Boxy Cut',
+  'Relaxed Fit',
+  'Drop Shoulder',
+  'Regular Fit',
+];
+
+const DEFAULT_THEMES = [
+  'Streetwear',
+  'Vintage Nostalgia',
+  'Minimalist Typography',
+  'Japanese Anime Art',
+  'Gothic & Cyberpunk',
+  'Abstract Geometry',
+  'Acid Wash',
+];
+
+const DEFAULT_COLLECTIONS = [
+  'Drop 01 - Heavyweight',
+  'Fall Winter 2026',
+  'Acid Wash Series',
+  'Monochrome Signature',
+  'Limited Capsule',
 ];
 
 export default function AdminSectionsPage() {
@@ -48,18 +75,26 @@ export default function AdminSectionsPage() {
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState(null);
 
+  // Available options for pure select dropdowns (loaded from MongoDB)
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [fits, setFits] = useState(DEFAULT_FITS);
+  const [themes, setThemes] = useState(DEFAULT_THEMES);
+  const [collections, setCollections] = useState(DEFAULT_COLLECTIONS);
+
   // Modal State (Create & Edit)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSection, setEditingSection] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Form State
+  // Form State (with 4 pure dropdown targeting criteria)
   const [formData, setFormData] = useState({
     title: '',
     subtitle: '',
-    filterType: 'discount',
-    filterValue: '40',
-    badgeText: 'FLAT 40% OFF',
+    category: '',        // Optional select dropdown
+    fit: '',             // Optional select dropdown
+    theme: '',           // Optional select dropdown
+    collectionName: '',  // Optional select dropdown
+    badgeText: '',
     limit: 8,
     displayOrder: 1,
     countdownEndsAt: '',
@@ -71,18 +106,32 @@ export default function AdminSectionsPage() {
   const [sectionToDelete, setSectionToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Fetch sections from API
-  const fetchSections = async () => {
+  // Fetch sections and live attributes from MongoDB
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await getAllSections();
-      if (res && (res.sections || res.data)) {
-        setSections(res.sections || res.data || []);
-      } else if (Array.isArray(res)) {
-        setSections(res);
+      const [secRes, attrRes] = await Promise.all([
+        getAllSections().catch(() => null),
+        getAttributes().catch(() => null),
+      ]);
+
+      if (secRes && (secRes.sections || secRes.data)) {
+        setSections(secRes.sections || secRes.data || []);
+      } else if (Array.isArray(secRes)) {
+        setSections(secRes);
+      }
+
+      if (attrRes?.success && Array.isArray(attrRes.data)) {
+        const liveFits = attrRes.data.filter((a) => a.type === 'fit').map((a) => a.name);
+        const liveThemes = attrRes.data.filter((a) => a.type === 'theme').map((a) => a.name);
+        const liveCollections = attrRes.data.filter((a) => a.type === 'collection').map((a) => a.name);
+
+        if (liveFits.length > 0) setFits([...new Set([...liveFits, ...DEFAULT_FITS])]);
+        if (liveThemes.length > 0) setThemes([...new Set([...liveThemes, ...DEFAULT_THEMES])]);
+        if (liveCollections.length > 0) setCollections([...new Set([...liveCollections, ...DEFAULT_COLLECTIONS])]);
       }
     } catch (err) {
-      console.error('Failed to load sections:', err);
+      console.error('Failed to load sections data:', err);
       if (showToast) showToast('Failed to load sections', 'error');
     } finally {
       setLoading(false);
@@ -90,7 +139,7 @@ export default function AdminSectionsPage() {
   };
 
   useEffect(() => {
-    fetchSections();
+    fetchData();
   }, []);
 
   // Open Create Modal
@@ -99,9 +148,11 @@ export default function AdminSectionsPage() {
     setFormData({
       title: '',
       subtitle: '',
-      filterType: 'discount',
-      filterValue: '40',
-      badgeText: 'FLAT 40% OFF',
+      category: '',
+      fit: '',
+      theme: '',
+      collectionName: '',
+      badgeText: '',
       limit: 8,
       displayOrder: sections.length + 1,
       countdownEndsAt: '',
@@ -120,8 +171,10 @@ export default function AdminSectionsPage() {
     setFormData({
       title: sec.title || '',
       subtitle: sec.subtitle || '',
-      filterType: sec.filterType || 'discount',
-      filterValue: sec.filterValue || '',
+      category: sec.category || (sec.filterType === 'category' ? sec.filterValue : ''),
+      fit: sec.fit || (sec.filterType === 'fit' ? sec.filterValue : ''),
+      theme: sec.theme || (sec.filterType === 'theme' ? sec.filterValue : ''),
+      collectionName: sec.collectionName || '',
       badgeText: sec.badgeText || '',
       limit: sec.limit || 8,
       displayOrder: sec.displayOrder || 1,
@@ -133,29 +186,7 @@ export default function AdminSectionsPage() {
 
   // Handle Form Change
   const handleInputChange = (field, value) => {
-    setFormData((prev) => {
-      const next = { ...prev, [field]: value };
-      // Auto-suggest values when filterType changes
-      if (field === 'filterType') {
-        if (value === 'discount') {
-          next.filterValue = '40';
-          next.badgeText = 'FLAT 40% OFF';
-        } else if (value === 'underPrice') {
-          next.filterValue = '999';
-          next.badgeText = 'UNDER ₹999';
-        } else if (value === 'category') {
-          next.filterValue = 'Oversized Tees';
-          next.badgeText = 'TRENDING CAPSULE';
-        } else if (value === 'fit') {
-          next.filterValue = 'Oversized Fit';
-          next.badgeText = 'BOXY SILHOUETTES';
-        } else if (value === 'badge') {
-          next.filterValue = 'BESTSELLER';
-          next.badgeText = 'MOST WANTED';
-        }
-      }
-      return next;
-    });
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   // Save Section (Create / Update)
@@ -165,17 +196,15 @@ export default function AdminSectionsPage() {
       alert('Please enter a Section Title');
       return;
     }
-    if (!formData.filterValue.trim()) {
-      alert('Please enter a Filter Value');
-      return;
-    }
 
     setIsSaving(true);
     const payload = {
       title: formData.title.trim(),
       subtitle: formData.subtitle.trim(),
-      filterType: formData.filterType,
-      filterValue: formData.filterValue.trim(),
+      category: formData.category || '',
+      fit: formData.fit || '',
+      theme: formData.theme || '',
+      collectionName: formData.collectionName || '',
       badgeText: formData.badgeText.trim(),
       limit: Number(formData.limit) || 8,
       displayOrder: Number(formData.displayOrder) || 1,
@@ -190,7 +219,7 @@ export default function AdminSectionsPage() {
         if (res && res.success !== false) {
           if (showToast) showToast(`Section "${payload.title}" updated successfully!`, 'success');
           setIsModalOpen(false);
-          fetchSections();
+          fetchData();
         } else {
           alert(res?.message || 'Failed to update section');
         }
@@ -199,7 +228,7 @@ export default function AdminSectionsPage() {
         if (res && res.success !== false) {
           if (showToast) showToast(`Section "${payload.title}" created successfully!`, 'success');
           setIsModalOpen(false);
-          fetchSections();
+          fetchData();
         } else {
           alert(res?.message || 'Failed to create section');
         }
@@ -269,6 +298,14 @@ export default function AdminSectionsPage() {
   const activeCount = sections.filter((s) => s.isActive !== false).length;
   const timedDropsCount = sections.filter((s) => s.countdownEndsAt && new Date(s.countdownEndsAt) > new Date()).length;
 
+  // Selected filter criteria count for live preview in modal
+  const selectedCriteria = [
+    formData.category ? `Category: ${formData.category}` : null,
+    formData.fit ? `Fit: ${formData.fit}` : null,
+    formData.theme ? `Theme: ${formData.theme}` : null,
+    formData.collectionName ? `Collection: ${formData.collectionName}` : null,
+  ].filter(Boolean);
+
   return (
     <div className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8 space-y-6">
       
@@ -285,7 +322,7 @@ export default function AdminSectionsPage() {
             Landing Page Sections
           </h1>
           <p className="text-xs text-slate-500 max-w-xl">
-            Configure dynamic product drops, flash deal countdowns, and curated collection strips that automatically display live on your homepage.
+            Target products using Category, Fit Style, Theme, and Collection dropdowns. Products matching all your selected criteria will automatically appear on the homepage.
           </p>
         </div>
 
@@ -301,9 +338,8 @@ export default function AdminSectionsPage() {
           </Link>
 
           <button
-            type="button"
             onClick={handleOpenCreateModal}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer"
+            className="flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm shadow-blue-500/20 active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>Create Section</span>
@@ -311,75 +347,64 @@ export default function AdminSectionsPage() {
         </div>
       </div>
 
-      {/* 2. STATS OVERVIEW CARDS */}
+      {/* 2. STATS OVERVIEW BAR */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
             Total Sections
           </span>
-          <div className="text-2xl font-black text-slate-900 font-mono">
-            {sections.length}
-          </div>
+          <p className="text-2xl font-black text-slate-900 mt-1">{sections.length}</p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-            Active on Home
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+          <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block flex items-center space-x-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Active on Store</span>
           </span>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
-            {activeCount}
-          </div>
+          <p className="text-2xl font-black text-slate-900 mt-1">{activeCount}</p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-            Flash / Timed Drops
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+          <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block flex items-center space-x-1">
+            <Clock className="w-3 h-3 text-amber-500" />
+            <span>Flash Drop Timers</span>
           </span>
-          <div className="text-2xl font-black text-amber-500 font-mono">
-            {timedDropsCount}
-          </div>
+          <p className="text-2xl font-black text-slate-900 mt-1">{timedDropsCount}</p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-            Merchandising Rules
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block flex items-center space-x-1">
+            <Filter className="w-3 h-3 text-blue-500" />
+            <span>Targeting Rules</span>
           </span>
-          <div className="text-2xl font-black text-blue-600 font-mono">
-            {FILTER_TYPES.length} Types
-          </div>
+          <p className="text-2xl font-black text-slate-900 mt-1">Multi-Dropdown</p>
         </div>
       </div>
 
-      {/* 3. SECTIONS LIST */}
+      {/* 3. SECTIONS LIST TABLE */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <LayoutTemplate className="w-4 h-4 text-slate-500" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-              Configured Homepage Strips
-            </h2>
-          </div>
-          <span className="text-xs font-semibold text-slate-400">
-            Ordered by Priority
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <h2 className="text-sm font-bold text-slate-900">
+            Configured Merchandising Strips ({sections.length})
+          </h2>
+          <span className="text-xs text-slate-500">
+            Sections display in order of Priority (#1 highest)
           </span>
         </div>
 
         {loading ? (
-          <div className="py-20 text-center space-y-3">
-            <div className="w-8 h-8 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Loading Landing Page Sections...
-            </p>
+          <div className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-wider">
+            Loading Sections from Database...
           </div>
         ) : sections.length === 0 ? (
-          <div className="py-16 text-center space-y-4 px-4">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-              <LayoutTemplate className="w-7 h-7" />
+          <div className="p-12 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+              <LayoutTemplate className="w-6 h-6" />
             </div>
-            <div className="space-y-1">
+            <div>
               <h3 className="text-base font-bold text-slate-800">No Custom Sections Configured Yet</h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Create promotional drops like &quot;Flat 40% Off Capsule&quot;, &quot;Under ₹999 Street Picks&quot;, or &quot;Heavyweight Boxy Tees&quot; to showcase targeted items on your homepage.
+                Create dynamic strips like &quot;Oversized Anime Capsule&quot;, &quot;Heavyweight Boxy Tees&quot;, or &quot;Acid Wash Streetwear&quot; to showcase targeted items on your homepage.
               </p>
             </div>
             <button
@@ -398,8 +423,17 @@ export default function AdminSectionsPage() {
               const hasTimer = sec.countdownEndsAt && new Date(sec.countdownEndsAt) > new Date();
               const isExpired = sec.countdownEndsAt && new Date(sec.countdownEndsAt) <= new Date();
 
-              const ruleTypeObj = FILTER_TYPES.find((t) => t.value === sec.filterType) || FILTER_TYPES[0];
-              const RuleIcon = ruleTypeObj.icon;
+              // Collect active criteria pills for this section
+              const criteriaList = [];
+              if (sec.category) criteriaList.push({ label: 'Category', val: sec.category, color: 'bg-emerald-50 text-emerald-800 border-emerald-200' });
+              if (sec.fit) criteriaList.push({ label: 'Fit', val: sec.fit, color: 'bg-indigo-50 text-indigo-800 border-indigo-200' });
+              if (sec.theme) criteriaList.push({ label: 'Theme', val: sec.theme, color: 'bg-sky-50 text-sky-800 border-sky-200' });
+              if (sec.collectionName) criteriaList.push({ label: 'Drop', val: sec.collectionName, color: 'bg-amber-50 text-amber-800 border-amber-200' });
+
+              // Legacy rule fallback
+              if (criteriaList.length === 0 && sec.filterType && sec.filterValue) {
+                criteriaList.push({ label: sec.filterType, val: sec.filterValue, color: 'bg-blue-50 text-blue-800 border-blue-200' });
+              }
 
               return (
                 <div
@@ -446,15 +480,29 @@ export default function AdminSectionsPage() {
                         </p>
                       )}
 
-                      {/* Rule Pill */}
-                      <div className="flex items-center space-x-2 pt-1 text-xs">
-                        <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-semibold">
-                          <RuleIcon className="w-3 h-3" />
-                          <span>{ruleTypeObj.label}: <strong>{sec.filterValue}</strong></span>
-                        </span>
+                      {/* Rule Pills Strip */}
+                      <div className="flex items-center space-x-1.5 flex-wrap gap-y-1 pt-1 text-xs">
+                        {criteriaList.length > 0 ? (
+                          <>
+                            {criteriaList.map((crit, cIdx) => (
+                              <React.Fragment key={cIdx}>
+                                {cIdx > 0 && (
+                                  <span className="text-[10px] font-black text-slate-400 font-mono">+</span>
+                                )}
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg border text-[11px] font-bold ${crit.color}`}>
+                                  <span>{crit.label}: <strong>{crit.val}</strong></span>
+                                </span>
+                              </React.Fragment>
+                            ))}
+                          </>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 text-[11px] font-medium">
+                            Targeting: All Active Products
+                          </span>
+                        )}
 
-                        <span className="text-[11px] text-slate-400 font-mono">
-                          Limit: {sec.limit || 8} products
+                        <span className="text-[11px] text-slate-400 font-mono ml-2">
+                          • Max {sec.limit || 8} items
                         </span>
                       </div>
                     </div>
@@ -530,7 +578,7 @@ export default function AdminSectionsPage() {
                     {editingSection ? 'Edit Landing Page Section' : 'Create Dynamic Landing Section'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Merchandise targeted drops directly to your homepage
+                    Target products using pure dropdowns (no typing mistakes)
                   </p>
                 </div>
               </div>
@@ -555,7 +603,7 @@ export default function AdminSectionsPage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. MIDNIGHT DROP, UNDER ₹999 ESSENTIALS"
+                    placeholder="e.g. OVERSIZED ANIME CAPSULE, BEST OF BOXY"
                     value={formData.title}
                     onChange={(e) => handleInputChange('title', e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-semibold focus:bg-white focus:border-blue-500 outline-none"
@@ -568,7 +616,7 @@ export default function AdminSectionsPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. 50% OFF"
+                    placeholder="e.g. LIMITED DROP"
                     value={formData.badgeText}
                     onChange={(e) => handleInputChange('badgeText', e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-semibold focus:bg-white focus:border-blue-500 outline-none uppercase font-mono"
@@ -583,54 +631,134 @@ export default function AdminSectionsPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Heavyweight combed cotton basics in monochrome palettes."
+                  placeholder="e.g. Heavyweight silhouettes engineered with Japanese manga art."
                   value={formData.subtitle}
                   onChange={(e) => handleInputChange('subtitle', e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 focus:bg-white focus:border-blue-500 outline-none"
                 />
               </div>
 
-              {/* Filter Type & Filter Value */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">
-                    Dynamic Filter Rule *
+              {/* ======================================================== */}
+              {/* 4 PURE DROPDOWNS: CATEGORY, FIT, THEME, COLLECTION       */}
+              {/* No manual typing allowed to prevent mismatches!          */}
+              {/* None mandatory: 1 = matches 1, 2 = matches both (AND)    */}
+              {/* ======================================================== */}
+              <div className="pt-2 border-t border-slate-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block font-black text-slate-900 uppercase tracking-wider text-[11px] flex items-center space-x-1.5">
+                    <Filter className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Targeting Criteria (All Optional Dropdowns)</span>
                   </label>
-                  <select
-                    value={formData.filterType}
-                    onChange={(e) => handleInputChange('filterType', e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-semibold focus:bg-white focus:border-blue-500 outline-none cursor-pointer"
-                  >
-                    {FILTER_TYPES.map((ft) => (
-                      <option key={ft.value} value={ft.value}>
-                        {ft.label}
-                      </option>
-                    ))}
-                  </select>
+                  <span className="text-[10px] text-slate-400">
+                    Select 1, 2, or more to filter by combined AND logic
+                  </span>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">
-                    Filter Match Value *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder={FILTER_TYPES.find((t) => t.value === formData.filterType)?.hint || ''}
-                    value={formData.filterValue}
-                    onChange={(e) => handleInputChange('filterValue', e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-semibold focus:bg-white focus:border-blue-500 outline-none font-mono"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* 1. Category Dropdown */}
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">
+                      Product Category
+                    </label>
+                    <select
+                      value={formData.category}
+                      onChange={(e) => handleInputChange('category', e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-semibold focus:bg-white focus:border-blue-500 outline-none cursor-pointer"
+                    >
+                      <option value="">Any Category (No filter)</option>
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 2. Fit Style Dropdown */}
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">
+                      Fit Style Cut
+                    </label>
+                    <select
+                      value={formData.fit}
+                      onChange={(e) => handleInputChange('fit', e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-semibold focus:bg-white focus:border-blue-500 outline-none cursor-pointer"
+                    >
+                      <option value="">Any Fit Style (No filter)</option>
+                      {fits.map((f) => (
+                        <option key={f} value={f}>
+                          {f}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 3. Theme Dropdown */}
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">
+                      Aesthetic Theme Tag
+                    </label>
+                    <select
+                      value={formData.theme}
+                      onChange={(e) => handleInputChange('theme', e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-semibold focus:bg-white focus:border-blue-500 outline-none cursor-pointer"
+                    >
+                      <option value="">Any Theme (No filter)</option>
+                      {themes.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 4. Collection / Capsule Dropdown */}
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">
+                      Capsule Drop / Collection
+                    </label>
+                    <select
+                      value={formData.collectionName}
+                      onChange={(e) => handleInputChange('collectionName', e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-semibold focus:bg-white focus:border-blue-500 outline-none cursor-pointer"
+                    >
+                      <option value="">Any Collection (No filter)</option>
+                      {collections.map((col) => (
+                        <option key={col} value={col}>
+                          {col}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Live Targeting Explanation Pill */}
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                  <div className="flex items-center space-x-1.5 font-bold text-slate-700 text-[11px]">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Targeting Logic:</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    {selectedCriteria.length === 0 ? (
+                      <span className="text-slate-500 italic">
+                        No filters selected — this section will showcase all active products.
+                      </span>
+                    ) : (
+                      <span>
+                        Display products where{' '}
+                        {selectedCriteria.map((crit, idx) => (
+                          <span key={idx}>
+                            {idx > 0 && <strong className="text-blue-600"> AND </strong>}
+                            <span className="px-1.5 py-0.5 rounded bg-white border border-slate-300 font-semibold text-slate-900">
+                              {crit}
+                            </span>
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
-
-              <p className="text-[11px] text-slate-400 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                💡 <strong>How it matches:</strong> Products in your database that match{' '}
-                <strong className="text-slate-700 font-mono">
-                  {formData.filterType}: {formData.filterValue || '...'}
-                </strong>{' '}
-                will be fetched and automatically displayed under this section.
-              </p>
 
               {/* Display Order & Product Limit & Countdown */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
@@ -652,117 +780,81 @@ export default function AdminSectionsPage() {
                   <label className="block font-bold text-slate-700">
                     Max Products Limit
                   </label>
-                  <select
+                  <input
+                    type="number"
+                    min="2"
+                    max="30"
                     value={formData.limit}
-                    onChange={(e) => handleInputChange('limit', Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-bold focus:bg-white focus:border-blue-500 outline-none cursor-pointer"
-                  >
-                    <option value={4}>4 Products</option>
-                    <option value={8}>8 Products</option>
-                    <option value={12}>12 Products</option>
-                    <option value={16}>16 Products</option>
-                  </select>
+                    onChange={(e) => handleInputChange('limit', e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-bold focus:bg-white focus:border-blue-500 outline-none font-mono"
+                  />
                 </div>
 
                 <div className="space-y-1">
                   <label className="block font-bold text-slate-700">
-                    Status
+                    Flash Sale End Time
                   </label>
-                  <select
-                    value={formData.isActive ? 'active' : 'draft'}
-                    onChange={(e) => handleInputChange('isActive', e.target.value === 'active')}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-bold focus:bg-white focus:border-blue-500 outline-none cursor-pointer"
-                  >
-                    <option value="active">🟢 Active / Live</option>
-                    <option value="draft">⚪ Inactive / Draft</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Countdown Timer (Optional) */}
-              <div className="space-y-1 pt-1">
-                <label className="block font-bold text-slate-700">
-                  Countdown Deadline (Optional for Flash Deals)
-                </label>
-                <div className="relative">
                   <input
                     type="datetime-local"
                     value={formData.countdownEndsAt}
                     onChange={(e) => handleInputChange('countdownEndsAt', e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-mono focus:bg-white focus:border-blue-500 outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 focus:bg-white focus:border-blue-500 outline-none"
                   />
-                  {formData.countdownEndsAt && (
-                    <button
-                      type="button"
-                      onClick={() => handleInputChange('countdownEndsAt', '')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
-                    >
-                      Clear
-                    </button>
-                  )}
                 </div>
               </div>
 
-              {/* Live Preview Box */}
-              <div className="pt-2">
-                <label className="block font-bold text-slate-500 uppercase text-[10px] tracking-wider mb-1.5">
-                  Live Storefront Preview:
-                </label>
-                <div className="bg-[#0e0e12] text-white p-4 rounded-xl border border-white/10 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      {formData.badgeText && (
-                        <span className="inline-block px-2 py-0.5 mb-1 text-[9px] font-black uppercase tracking-wider bg-white text-black rounded-sm">
-                          {formData.badgeText}
-                        </span>
-                      )}
-                      <h4 className="font-sans font-black text-base text-white uppercase tracking-tight">
-                        {formData.title || 'YOUR SECTION TITLE'}
-                      </h4>
-                      {formData.subtitle && (
-                        <p className="text-[11px] text-gray-400">{formData.subtitle}</p>
-                      )}
-                    </div>
-                    {formData.countdownEndsAt && (
-                      <div className="flex items-center space-x-1 text-[10px] text-yellow-400 font-mono font-bold bg-yellow-400/10 px-2 py-1 rounded-full border border-yellow-400/20">
-                        <Clock className="w-3 h-3" />
-                        <span>Limited Drop</span>
-                      </div>
-                    )}
-                  </div>
+              {/* Active Toggle Switch */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <span className="font-bold text-slate-900 block">
+                    Section Status: {formData.isActive ? 'Active (Live)' : 'Draft (Hidden)'}
+                  </span>
+                  <p className="text-[11px] text-slate-500">
+                    When active, this strip immediately displays on the homepage.
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => handleInputChange('isActive', !formData.isActive)}
+                  className={`w-12 h-6 rounded-full p-0.5 transition-colors duration-200 flex items-center ${
+                    formData.isActive ? 'bg-blue-600 justify-end' : 'bg-slate-300 justify-start'
+                  }`}
+                >
+                  <div className="w-5 h-5 rounded-full bg-white shadow-md" />
+                </button>
               </div>
 
-              {/* Action Buttons */}
+              {/* Modal Action Buttons */}
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  disabled={isSaving}
-                  className="px-4 py-2 text-slate-600 hover:text-slate-900 font-bold transition-colors"
+                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold transition-colors"
                 >
                   Cancel
                 </button>
+
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md shadow-blue-500/20 transition-all flex items-center space-x-2 active:scale-95 disabled:opacity-50 cursor-pointer"
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 flex items-center space-x-2"
                 >
                   {isSaving ? (
                     <span>Saving...</span>
                   ) : (
-                    <span>{editingSection ? 'Update Section' : 'Create Section'}</span>
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>{editingSection ? 'Update Section' : 'Save Section'}</span>
+                    </>
                   )}
                 </button>
               </div>
-
             </form>
-
           </div>
         </div>
       )}
 
-      {/* 5. CONFIRM DELETE MODAL */}
+      {/* 5. REUSABLE DELETE CONFIRMATION MODAL */}
       <ConfirmModal
         isOpen={deleteModalOpen}
         onClose={() => {
@@ -772,15 +864,13 @@ export default function AdminSectionsPage() {
           }
         }}
         onConfirm={handleConfirmDelete}
-        title="Delete Landing Section"
-        message="Are you sure you want to remove this section? It will be immediately removed from the live homepage."
+        title="Delete Merchandising Section"
+        message="Are you sure you want to remove this dynamic section from your homepage storefront?"
         itemName={sectionToDelete?.title || ''}
         confirmText={isDeleting ? 'Deleting...' : 'Delete Section'}
         isLoading={isDeleting}
         isDanger={true}
       />
-
     </div>
   );
 }
-
