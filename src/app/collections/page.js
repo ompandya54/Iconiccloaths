@@ -20,6 +20,7 @@ import {
   Star
 } from 'lucide-react';
 import QuickViewModal from '@/components/QuickViewModal';
+import FloatingRackHero from '@/components/FloatingRackHero';
 import { getProducts } from '@/app/api/productapi';
 import { useCart } from '@/context/CartContext';
 
@@ -183,70 +184,41 @@ export default function CollectionsPage() {
         />
       )}
 
-      {/* Hero Banner / Lookbook Header */}
-      <section className="relative pt-32 pb-20 sm:pt-40 sm:pb-28 overflow-hidden border-b border-white/10">
-        {/* Ambient Glow & Grid Texture */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
-        <div className="absolute top-1/2 right-10 w-[400px] h-[300px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
+      {/* 3D Floating Rack Hero Showcase */}
+      <FloatingRackHero
+        title="CURATED CAPSULES & DROPS"
+        subtitle="ICONIC ARCHIVE • FLOATING RACK EXHIBIT"
+      />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center space-y-6">
-          {/* Eyebrow Pill */}
-          <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-bold tracking-[0.25em] uppercase text-gray-300">
-            <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-            <span>ICONIC ARCHIVE • SEASON 2026</span>
-          </div>
-
-          {/* Large Title */}
-          <h1 className="text-3xl sm:text-5xl lg:text-7xl font-serif font-black tracking-tight uppercase text-white leading-none">
-            CURATED CAPSULES &amp; DROPS
-          </h1>
-
-          {/* Subtitle */}
-          <p className="max-w-2xl mx-auto text-xs sm:text-sm text-gray-400 leading-relaxed tracking-wide">
-            Architectural streetwear cuts, custom heavyweight loopknit fabrics (240–280 GSM), and high-density ink prints engineered for those who challenge the mundane.
-          </p>
-
-          {/* Live Drop Alert Banner */}
-          <div className="inline-flex items-center space-x-3 px-5 py-2.5 rounded-2xl bg-white/[0.04] border border-white/15 text-xs shadow-2xl backdrop-blur-md">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-bold text-gray-300 tracking-wider uppercase text-[11px]">
-              Live Drop: <span className="text-white">Cyberpunk 2.0 Capsule</span>
-            </span>
-            <span className="text-gray-500">•</span>
-            <span className="text-emerald-400 font-mono font-bold text-[11px]">
-              Only 42 Pieces Worldwide
-            </span>
-          </div>
-
-          {/* Navigation Jump Pills */}
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-4 text-xs font-bold uppercase tracking-wider">
-            <a
-              href="#capsules"
-              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white text-white hover:text-black transition-all border border-white/15"
-            >
-              Signature Drops
-            </a>
-            <a
-              href="#fits"
-              className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white transition-all border border-white/10"
-            >
-              Shop By Fit Cut
-            </a>
-            <a
-              href="#moodboard"
-              className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white transition-all border border-white/10"
-            >
-              Aesthetic Themes
-            </a>
-            <a
-              href="#fabric-manifesto"
-              className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white transition-all border border-white/10"
-            >
-              Fabric Manifesto
-            </a>
-          </div>
+      {/* Navigation Jump Bar */}
+      <div className="bg-[#08080a] border-b border-white/10 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-center gap-3 text-xs font-bold uppercase tracking-wider">
+          <a
+            href="#capsules"
+            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white text-white hover:text-black transition-all border border-white/15"
+          >
+            Signature Drops
+          </a>
+          <a
+            href="#fits"
+            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white transition-all border border-white/10"
+          >
+            Shop By Fit Cut
+          </a>
+          <a
+            href="#moodboard"
+            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white transition-all border border-white/10"
+          >
+            Aesthetic Themes
+          </a>
+          <a
+            href="#fabric-manifesto"
+            className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white transition-all border border-white/10"
+          >
+            Fabric Manifesto
+          </a>
         </div>
-      </section>
+      </div>
 
       {/* SECTION 1: SIGNATURE CAPSULE DROPS */}
       <section id="capsules" className="py-20 sm:py-28 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
