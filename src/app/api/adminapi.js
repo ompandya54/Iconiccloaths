@@ -45,6 +45,13 @@ export async function getAllSections() {
 }
 
 /**
+ * Public: Get active dynamic sections with populated products
+ */
+export async function getActiveSections() {
+  return await apiRequest('/api/sections/active');
+}
+
+/**
  * Create dynamic landing page section
  */
 export async function createSection(sectionData) {

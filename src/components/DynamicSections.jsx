@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Eye, ShoppingBag, Clock } from 'lucide-react';
-import { getActiveSections } from '@/services/api';
+import { getActiveSections } from '@/app/api/adminapi';
 
 export default function DynamicSections({ onAddToCart, onQuickView }) {
   const [sections, setSections] = useState([]);
@@ -13,8 +13,9 @@ export default function DynamicSections({ onAddToCart, onQuickView }) {
     async function loadSections() {
       try {
         const res = await getActiveSections();
-        if (res.success && res.sections && res.sections.length > 0) {
-          setSections(res.sections);
+        const list = res?.sections || res?.data || (Array.isArray(res) ? res : []);
+        if (Array.isArray(list) && list.length > 0) {
+          setSections(list);
         }
       } catch (err) {
         console.error('Error loading dynamic sections:', err);

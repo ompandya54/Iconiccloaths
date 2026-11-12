@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   Layers,
   Tag,
+  LayoutTemplate,
   SlidersHorizontal,
   LogOut,
   Lock,
@@ -148,6 +149,12 @@ export default function AdminLayout({ children }) {
       href: '/admin/categories',
       icon: Layers,
       isActive: pathname.startsWith('/admin/categories'),
+    },
+    {
+      label: 'Sections',
+      href: '/admin/sections',
+      icon: LayoutTemplate,
+      isActive: pathname.startsWith('/admin/sections'),
     },
     {
       label: 'Attributes',

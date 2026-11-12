@@ -4,6 +4,7 @@ import { useState } from 'react';
 import HeroSection from '../components/HeroSection';
 import CategoryArches from '../components/CategoryArches';
 import BestsellersSection from '../components/BestsellersSection';
+import DynamicSections from '../components/DynamicSections';
 import StorySection from '../components/StorySection';
 import TrustBadges from '../components/TrustBadges';
 import ShadowsDropSection from '../components/ShadowsDropSection';
@@ -26,6 +27,12 @@ export default function Home() {
 
       {/* Bestseller Products Section: OUR ICONS */}
       <BestsellersSection
+        onAddToCart={addToCart}
+        onQuickView={(product) => setQuickViewProduct(product)}
+      />
+
+      {/* Dynamic Homepage Sections configured from Admin */}
+      <DynamicSections
         onAddToCart={addToCart}
         onQuickView={(product) => setQuickViewProduct(product)}
       />
