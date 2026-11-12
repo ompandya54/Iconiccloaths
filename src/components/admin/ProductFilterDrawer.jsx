@@ -53,9 +53,14 @@ export default function ProductFilterDrawer({
   onFilterChange,
   onResetFilters,
   categories = [],
+  fits = FIT_OPTIONS,
+  themes = THEME_OPTIONS,
   totalMatching = 0,
 }) {
   if (!isOpen) return null;
+
+  const fitList = ['all', ...fits.filter((f) => f !== 'all')];
+  const themeList = ['all', ...themes.filter((t) => t !== 'all')];
 
   const hasActiveFilters =
     filters.status !== 'all' ||
@@ -154,7 +159,7 @@ export default function ProductFilterDrawer({
                 Fit Silhouette
               </label>
               <div className="flex flex-wrap gap-2">
-                {FIT_OPTIONS.map((fit) => (
+                {fitList.map((fit) => (
                   <button
                     key={fit}
                     type="button"
@@ -177,7 +182,7 @@ export default function ProductFilterDrawer({
                 Aesthetic Theme Tag
               </label>
               <div className="flex flex-wrap gap-2">
-                {THEME_OPTIONS.map((theme) => (
+                {themeList.map((theme) => (
                   <button
                     key={theme}
                     type="button"

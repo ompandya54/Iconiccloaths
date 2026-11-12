@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import ImageCropModal from './ImageCropModal';
 import { uploadImageFile } from '@/app/api/uploadapi';
+import { getAttributes, createAttribute } from '@/app/api/adminapi';
 
 const DEFAULT_CATEGORIES = [
   'Oversized Tees',
@@ -81,6 +82,29 @@ export default function ProductForm({
 
   // Quick Inline Add Modal / Prompt State
   const [quickAddModal, setQuickAddModal] = useState({ open: false, field: '', title: '', value: '' });
+
+  // Load live attributes from MongoDB to populate select options
+  useEffect(() => {
+    async function fetchLiveAttributes() {
+      try {
+        const res = await getAttributes();
+        if (res?.success && Array.isArray(res.data)) {
+          const liveFits = res.data.filter((a) => a.type === 'fit').map((a) => a.name);
+          const liveThemes = res.data.filter((a) => a.type === 'theme').map((a) => a.name);
+          const liveBadges = res.data.filter((a) => a.type === 'badge').map((a) => a.name);
+          const liveCollections = res.data.filter((a) => a.type === 'collection').map((a) => a.name);
+
+          if (liveFits.length > 0) setFits((prev) => [...new Set([...liveFits, ...prev])]);
+          if (liveThemes.length > 0) setThemes((prev) => [...new Set([...liveThemes, ...prev])]);
+          if (liveBadges.length > 0) setBadges((prev) => [...new Set([...liveBadges, ...prev])]);
+          if (liveCollections.length > 0) setCollections((prev) => [...new Set([...liveCollections, ...prev])]);
+        }
+      } catch (err) {
+        console.warn('Could not load live attributes, using defaults', err);
+      }
+    }
+    fetchLiveAttributes();
+  }, []);
 
   // Main Form Data (NO SLUG FIELD - Auto-generated silently)
   const [formData, setFormData] = useState({
@@ -294,8 +318,8 @@ export default function ProductForm({
     }));
   };
 
-  // Handle Quick Add Modal Save
-  const handleSaveQuickAdd = () => {
+  // Handle Quick Add Modal Save (saves to local state and persists to MongoDB)
+  const handleSaveQuickAdd = async () => {
     const val = quickAddModal.value.trim();
     if (!val) return;
 
@@ -305,15 +329,19 @@ export default function ProductForm({
     } else if (quickAddModal.field === 'fit') {
       if (!fits.includes(val)) setFits((prev) => [...prev, val]);
       handleChange('fit', val);
+      try { await createAttribute({ type: 'fit', name: val }); } catch (e) {}
     } else if (quickAddModal.field === 'theme') {
       if (!themes.includes(val)) setThemes((prev) => [...prev, val]);
       handleChange('theme', val);
+      try { await createAttribute({ type: 'theme', name: val }); } catch (e) {}
     } else if (quickAddModal.field === 'collection') {
       if (!collections.includes(val)) setCollections((prev) => [...prev, val]);
       handleChange('collectionName', val);
+      try { await createAttribute({ type: 'collection', name: val }); } catch (e) {}
     } else if (quickAddModal.field === 'badge') {
       if (!badges.includes(val)) setBadges((prev) => [...prev, val]);
       handleChange('badge', val);
+      try { await createAttribute({ type: 'badge', name: val }); } catch (e) {}
     }
 
     setQuickAddModal({ open: false, field: '', title: '', value: '' });

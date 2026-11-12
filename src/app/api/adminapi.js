@@ -89,3 +89,56 @@ export async function deleteSection(id) {
   });
 }
 
+/**
+ * ================= ATTRIBUTES APIs =================
+ */
+
+/**
+ * Get all attributes (fits, themes, badges, materials, sizes, colors, etc.)
+ */
+export async function getAttributes(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const url = query ? `/api/attributes?${query}` : '/api/attributes';
+  return await apiRequest(url);
+}
+
+/**
+ * Create a new attribute
+ */
+export async function createAttribute(attributeData) {
+  return await apiRequest('/api/attributes', {
+    method: 'POST',
+    body: JSON.stringify(attributeData),
+  });
+}
+
+/**
+ * Update an attribute
+ */
+export async function updateAttribute(id, attributeData) {
+  return await apiRequest(`/api/attributes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(attributeData),
+  });
+}
+
+/**
+ * Delete an attribute
+ */
+export async function deleteAttribute(id) {
+  return await apiRequest(`/api/attributes/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Reset / Seed default attributes
+ */
+export async function seedAttributes(overwrite = false) {
+  return await apiRequest('/api/attributes/seed', {
+    method: 'POST',
+    body: JSON.stringify({ overwrite }),
+  });
+}
+
+

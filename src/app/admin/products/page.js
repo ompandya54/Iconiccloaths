@@ -182,6 +182,16 @@ export default function AdminProductsPage() {
     return ['all', ...Array.from(new Set(products.map((p) => p.category).filter(Boolean)))];
   }, [products]);
 
+  // Unique fits list for filters
+  const uniqueFits = useMemo(() => {
+    return ['all', ...Array.from(new Set(products.map((p) => p.fit).filter(Boolean)))];
+  }, [products]);
+
+  // Unique themes list for filters
+  const uniqueThemes = useMemo(() => {
+    return ['all', ...Array.from(new Set(products.map((p) => p.theme).filter(Boolean)))];
+  }, [products]);
+
   // Active filter count
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -874,6 +884,8 @@ export default function AdminProductsPage() {
         onFilterChange={handleFilterChange}
         onResetFilters={handleResetFilters}
         categories={uniqueCategories}
+        fits={uniqueFits}
+        themes={uniqueThemes}
         totalMatching={filteredProducts.length}
       />
 
