@@ -58,7 +58,65 @@ export default function AdminCategoriesPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-white relative">
+      {/* Top Header matching Attributes & Reference Design */}
+      <header className="sticky top-0 z-30 bg-white border-b border-slate-200 px-6 pt-3.5 flex flex-col md:flex-row md:items-end justify-between gap-3 flex-shrink-0">
+        <div className="pb-3 flex items-center space-x-2">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight font-sans">
+            Categories & Taxonomy
+          </h1>
+        </div>
+
+        <nav className="flex items-center space-x-6 sm:space-x-8 overflow-x-auto no-scrollbar flex-shrink-0">
+          <span className="pb-3 text-xs uppercase tracking-wider text-slate-950 font-bold border-b-2 border-slate-950 -mb-px whitespace-nowrap cursor-default">
+            CATEGORIES
+          </span>
+          <Link
+            href="/admin/attributes"
+            className="pb-3 text-xs uppercase tracking-wider text-slate-400 hover:text-slate-700 font-semibold transition-all whitespace-nowrap cursor-pointer"
+          >
+            FIT STYLES
+          </Link>
+          <Link
+            href="/admin/attributes"
+            className="pb-3 text-xs uppercase tracking-wider text-slate-400 hover:text-slate-700 font-semibold transition-all whitespace-nowrap cursor-pointer"
+          >
+            THEMES
+          </Link>
+          <Link
+            href="/admin/attributes"
+            className="pb-3 text-xs uppercase tracking-wider text-slate-400 hover:text-slate-700 font-semibold transition-all whitespace-nowrap cursor-pointer"
+          >
+            BADGES
+          </Link>
+          <Link
+            href="/admin/attributes"
+            className="pb-3 text-xs uppercase tracking-wider text-slate-400 hover:text-slate-700 font-semibold transition-all whitespace-nowrap cursor-pointer"
+          >
+            FABRICS & GSM
+          </Link>
+          <Link
+            href="/admin/attributes"
+            className="pb-3 text-xs uppercase tracking-wider text-slate-400 hover:text-slate-700 font-semibold transition-all whitespace-nowrap cursor-pointer"
+          >
+            COLORS
+          </Link>
+          <Link
+            href="/admin/attributes"
+            className="pb-3 text-xs uppercase tracking-wider text-slate-400 hover:text-slate-700 font-semibold transition-all whitespace-nowrap cursor-pointer"
+          >
+            COLLECTIONS
+          </Link>
+          <Link
+            href="/admin/attributes"
+            className="pb-3 text-xs uppercase tracking-wider text-slate-400 hover:text-slate-700 font-semibold transition-all whitespace-nowrap cursor-pointer"
+          >
+            SIZES
+          </Link>
+        </nav>
+      </header>
+
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 bg-slate-50">
       {/* Header */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -173,6 +231,7 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
       </div>
+    </div>
 
       {/* Delete Confirmation Popup */}
       <ConfirmModal

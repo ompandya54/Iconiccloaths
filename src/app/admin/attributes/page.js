@@ -331,6 +331,12 @@ export default function AdminAttributesPage() {
 
         {/* Right: Clean horizontal uppercase tabs line with bottom active border */}
         <nav className="flex items-center space-x-6 sm:space-x-8 overflow-x-auto no-scrollbar flex-shrink-0">
+          <Link
+            href="/admin/categories"
+            className="pb-3 text-xs uppercase tracking-wider text-slate-400 hover:text-slate-700 font-semibold transition-all whitespace-nowrap cursor-pointer"
+          >
+            CATEGORIES
+          </Link>
           {ATTRIBUTE_TABS.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
