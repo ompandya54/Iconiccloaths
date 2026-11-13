@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Tag,
   Plus,
   Trash2,
+  Pencil,
+  Search,
   Sparkles,
   ArrowRight,
   Check,
@@ -14,16 +16,32 @@ import {
   Flame,
   Palette,
   Layers,
-  Loader2
+  Shirt,
+  X,
+  CheckCircle2,
+  Filter,
+  Eye
 } from 'lucide-react';
 import { useAdmin } from '../layout';
 import ConfirmModal from '@/components/ConfirmModal';
 import {
   getAttributes,
   createAttribute,
+  updateAttribute,
   deleteAttribute,
   seedAttributes,
 } from '@/app/api/adminapi';
+
+// Defined Tab Categories for the top sticky bar
+const ATTRIBUTE_TABS = [
+  { key: 'fit', label: 'Fit Styles', icon: SlidersHorizontal, description: 'Cut & silhouette classifications (e.g. Oversized Fit, Boxy Cut)' },
+  { key: 'theme', label: 'Theme Tags', icon: Sparkles, description: 'Design aesthetics & subcultures (e.g. Streetwear, Cyberpunk, Anime)' },
+  { key: 'badge', label: 'Ribbon Badges', icon: Flame, description: 'Thumbnail promo badges & marketing tags (e.g. NEW DROP, BESTSELLER)' },
+  { key: 'material', label: 'Fabrics & GSM', icon: Tag, description: 'Fabric composition & GSM weight presets (e.g. 260 GSM French Terry)' },
+  { key: 'color', label: 'Color Swatches', icon: Palette, description: 'Colorways & hex values for product variant pickers' },
+  { key: 'collection', label: 'Capsule Drops', icon: Layers, description: 'Signature collection drops & lookbook themes' },
+  { key: 'size', label: 'Sizes', icon: Shirt, description: 'Standard garment sizing scale (e.g. XS to 3XL)' },
+];
 
 export default function AdminAttributesPage() {
   const { showToast } = useAdmin() || {};
@@ -31,21 +49,26 @@ export default function AdminAttributesPage() {
   const [loading, setLoading] = useState(true);
   const [attributes, setAttributes] = useState([]);
 
-  // Input states
-  const [newFit, setNewFit] = useState('');
-  const [newTheme, setNewTheme] = useState('');
-  const [newBadge, setNewBadge] = useState('');
-  const [newMaterial, setNewMaterial] = useState('');
-  const [newColor, setNewColor] = useState({ name: '', hex: '#000000' });
-  const [newCollection, setNewCollection] = useState('');
+  // Active Category Tab
+  const [activeTab, setActiveTab] = useState('fit');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Submitting states for instant add feedback
-  const [addingType, setAddingType] = useState(null);
+  // Add / Edit Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null); // null for create, object for edit
+  const [modalForm, setModalForm] = useState({
+    type: 'fit',
+    name: '',
+    value: '',
+    isActive: true,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
-  // Delete modal state
+  // Delete Confirmation Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null); // { id, type, name }
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load attributes from MongoDB
   const loadAttributes = async () => {
@@ -67,95 +90,122 @@ export default function AdminAttributesPage() {
     loadAttributes();
   }, []);
 
-  // Filter attributes by type
-  const fits = attributes.filter((a) => a.type === 'fit');
-  const themes = attributes.filter((a) => a.type === 'theme');
-  const badges = attributes.filter((a) => a.type === 'badge');
-  const materials = attributes.filter((a) => a.type === 'material');
-  const colors = attributes.filter((a) => a.type === 'color');
-  const collections = attributes.filter((a) => a.type === 'collection');
+  // Compute counts per attribute type
+  const typeCounts = useMemo(() => {
+    const counts = {};
+    ATTRIBUTE_TABS.forEach((t) => {
+      counts[t.key] = attributes.filter((a) => a.type === t.key).length;
+    });
+    return counts;
+  }, [attributes]);
 
-  // Generic handler to add attribute to DB
-  const handleAdd = async (type, name, value = '') => {
-    if (!name || !name.trim()) return;
-    const cleanName = name.trim();
+  // Filtered attributes for the currently active tab
+  const activeItems = useMemo(() => {
+    const list = attributes.filter((a) => a.type === activeTab);
+    if (!searchQuery.trim()) return list;
+    const q = searchQuery.toLowerCase().trim();
+    return list.filter((a) => a.name.toLowerCase().includes(q) || (a.value && a.value.toLowerCase().includes(q)));
+  }, [attributes, activeTab, searchQuery]);
+
+  // Open Create Modal (pre-sets type to currently active tab)
+  const handleOpenCreateModal = () => {
+    setEditingItem(null);
+    setModalForm({
+      type: activeTab,
+      name: '',
+      value: activeTab === 'color' ? '#0a0a0c' : '',
+      isActive: true,
+    });
+    setIsModalOpen(true);
+  };
+
+  // Open Edit Modal
+  const handleOpenEditModal = (item) => {
+    setEditingItem(item);
+    setModalForm({
+      type: item.type,
+      name: item.name,
+      value: item.value || (item.type === 'color' ? '#0a0a0c' : ''),
+      isActive: item.isActive !== false,
+    });
+    setIsModalOpen(true);
+  };
+
+  // Handle Save (Create or Update)
+  const handleSaveAttribute = async (e) => {
+    e.preventDefault();
+    if (!modalForm.name.trim()) {
+      alert('Please enter an attribute name');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const cleanName = modalForm.name.trim();
 
     try {
-      setAddingType(type);
-      const res = await createAttribute({
-        type,
-        name: cleanName,
-        value: value || '',
-      });
+      if (editingItem) {
+        // Update existing attribute
+        const res = await updateAttribute(editingItem._id, {
+          type: modalForm.type,
+          name: cleanName,
+          value: modalForm.value || '',
+          isActive: modalForm.isActive,
+        });
 
-      if (res?.success && res.data) {
-        setAttributes((prev) => [...prev, res.data]);
-        if (showToast) showToast(`${type.toUpperCase()} "${cleanName}" saved to database`, 'success');
+        if (res?.success && res.data) {
+          setAttributes((prev) =>
+            prev.map((a) => (a._id === editingItem._id ? res.data : a))
+          );
+          if (showToast) showToast(`Attribute "${cleanName}" updated successfully!`, 'success');
+          setIsModalOpen(false);
+          setEditingItem(null);
+        } else {
+          alert(res?.message || 'Failed to update attribute');
+        }
       } else {
-        if (showToast) showToast(res?.message || 'Failed to add attribute', 'error');
+        // Create new attribute
+        const res = await createAttribute({
+          type: modalForm.type,
+          name: cleanName,
+          value: modalForm.value || '',
+          isActive: modalForm.isActive,
+        });
+
+        if (res?.success && res.data) {
+          setAttributes((prev) => [...prev, res.data]);
+          if (showToast) showToast(`Added "${cleanName}" to ${modalForm.type.toUpperCase()}`, 'success');
+          setIsModalOpen(false);
+          setEditingItem(null);
+        } else {
+          alert(res?.message || 'Failed to create attribute');
+        }
       }
     } catch (err) {
-      console.error('Error adding attribute:', err);
-      if (showToast) showToast(err.message || 'Error saving attribute', 'error');
+      console.error('Error saving attribute:', err);
+      alert(err.message || 'Error saving attribute');
     } finally {
-      setAddingType(null);
+      setIsSubmitting(false);
     }
   };
 
-  const handleAddFit = (e) => {
-    e.preventDefault();
-    handleAdd('fit', newFit);
-    setNewFit('');
-  };
-
-  const handleAddTheme = (e) => {
-    e.preventDefault();
-    handleAdd('theme', newTheme);
-    setNewTheme('');
-  };
-
-  const handleAddBadge = (e) => {
-    e.preventDefault();
-    handleAdd('badge', newBadge.toUpperCase());
-    setNewBadge('');
-  };
-
-  const handleAddMaterial = (e) => {
-    e.preventDefault();
-    handleAdd('material', newMaterial);
-    setNewMaterial('');
-  };
-
-  const handleAddColor = (e) => {
-    e.preventDefault();
-    if (!newColor.name.trim()) return;
-    handleAdd('color', newColor.name.trim(), newColor.hex);
-    setNewColor({ name: '', hex: '#000000' });
-  };
-
-  const handleAddCollection = (e) => {
-    e.preventDefault();
-    handleAdd('collection', newCollection);
-    setNewCollection('');
-  };
-
-  // Seed / Reset defaults handler
+  // Seed / Reset defaults
   const handleSeedDefaults = async () => {
     try {
       setSeeding(true);
       const res = await seedAttributes(false);
       if (res?.success && Array.isArray(res.data)) {
         setAttributes(res.data);
-        if (showToast) showToast('Default attributes synced successfully', 'success');
+        if (showToast) showToast('Default attributes synced successfully with MongoDB', 'success');
       }
     } catch (err) {
       console.error('Error seeding defaults:', err);
-      if (showToast) showToast('Failed to seed defaults', 'error');
+      if (showToast) showToast('Failed to sync defaults', 'error');
     } finally {
       setSeeding(false);
     }
   };
 
+  // Delete modal open
   const requestDelete = (item) => {
     setItemToDelete({
       id: item._id,
@@ -165,404 +215,506 @@ export default function AdminAttributesPage() {
     setDeleteModalOpen(true);
   };
 
+  // Confirm delete handler
   const handleConfirmDelete = async () => {
     if (!itemToDelete?.id) return;
-    const { id, type, name } = itemToDelete;
+    setIsDeleting(true);
 
     try {
-      const res = await deleteAttribute(id);
+      const res = await deleteAttribute(itemToDelete.id);
       if (res?.success) {
-        setAttributes((prev) => prev.filter((a) => a._id !== id));
-        if (showToast) showToast(`Deleted ${type} "${name}" from database`, 'success');
+        setAttributes((prev) => prev.filter((a) => a._id !== itemToDelete.id));
+        if (showToast) showToast(`Deleted "${itemToDelete.name}" permanently`, 'success');
+        setDeleteModalOpen(false);
+        setItemToDelete(null);
       } else {
-        if (showToast) showToast(res?.message || 'Failed to delete attribute', 'error');
+        alert(res?.message || 'Failed to delete attribute');
       }
     } catch (err) {
       console.error('Error deleting attribute:', err);
-      if (showToast) showToast(err.message || 'Error deleting attribute', 'error');
+      alert('Error deleting attribute');
     } finally {
-      setDeleteModalOpen(false);
-      setItemToDelete(null);
+      setIsDeleting(false);
     }
   };
 
+  const currentTabObj = ATTRIBUTE_TABS.find((t) => t.key === activeTab) || ATTRIBUTE_TABS[0];
+  const CurrentIcon = currentTabObj.icon;
+
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8 space-y-6">
-      {/* Header */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 relative">
+      
+      {/* ======================================================== */}
+      {/* 1. STICKY TOP HEADER (ATTRIBUTES TITLE + ADD + TABS)     */}
+      {/* ======================================================== */}
+      <header className="sticky top-0 z-30 bg-white border-b border-slate-200 px-4 sm:px-6 py-3 shadow-sm flex items-center justify-between gap-3 flex-shrink-0">
+        
+        {/* Left Side: "Attributes" Title + Count + [+] Add Attribute Button */}
+        <div className="flex items-center space-x-3 flex-shrink-0">
           <div className="flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-            <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
-              Database Taxonomy & Product Specs
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-sans">
+              Attributes
+            </h1>
+            <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-slate-200">
+              {typeCounts[activeTab] || 0}
             </span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight font-sans">
-            Product Attributes Management
-          </h1>
-          <p className="text-xs text-slate-500">
-            Live database-backed presets for Fits, Themes, Badges, Materials, Colors, and Drops.
-          </p>
-        </div>
 
-        <div className="flex items-center space-x-3">
+          {/* Prominent [+] Add Attribute Button (Opens Popup) */}
+          <button
+            onClick={handleOpenCreateModal}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer"
+            title={`Add New ${currentTabObj.label}`}
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span className="hidden sm:inline">Add {currentTabObj.label.split(' ')[0]}</span>
+            <span className="sm:hidden">Add</span>
+          </button>
+
+          {/* Quick Defaults Sync */}
           <button
             onClick={handleSeedDefaults}
             disabled={seeding || loading}
-            className="flex items-center space-x-2 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50"
-            title="Populate missing default streetwear presets in MongoDB"
+            className="hidden md:flex items-center space-x-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50"
+            title="Sync / Seed missing standard streetwear presets in MongoDB"
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${seeding ? 'animate-spin' : ''}`} />
+            <RotateCcw className={`w-3.5 h-3.5 ${seeding ? 'animate-spin text-blue-600' : ''}`} />
             <span>Sync Defaults</span>
           </button>
+        </div>
 
+        {/* Right Side: Horizontal Attribute Category Tabs in a Line */}
+        <div className="flex items-center space-x-2 flex-shrink-0">
+          {/* Quick Search in this attribute list */}
+          <div className="relative w-36 sm:w-48 hidden lg:block">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={`Search ${currentTabObj.label}...`}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all font-medium"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Attribute Tabs in a Line */}
+          <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-xl p-1 overflow-x-auto max-w-xl">
+            {ATTRIBUTE_TABS.map((tab) => {
+              const TabIcon = tab.icon;
+              const isActive = activeTab === tab.key;
+              const count = typeCounts[tab.key] || 0;
+
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => {
+                    setActiveTab(tab.key);
+                    setSearchQuery('');
+                  }}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    isActive
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                  }`}
+                  title={tab.description}
+                >
+                  <TabIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{tab.label}</span>
+                  <span
+                    className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
+                      isActive ? 'bg-blue-50 text-blue-700 font-bold' : 'bg-slate-200/80 text-slate-600'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </header>
+
+      {/* ======================================================== */}
+      {/* 2. SUBHEADER DESCRIPTION & QUICK STATS                   */}
+      {/* ======================================================== */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 flex-shrink-0 text-xs">
+        <div className="flex items-center space-x-2">
+          <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+            <CurrentIcon className="w-3.5 h-3.5" />
+          </div>
+          <span className="font-bold text-slate-900">{currentTabObj.label}:</span>
+          <span className="text-slate-500 hidden sm:inline">{currentTabObj.description}</span>
+        </div>
+
+        <div className="flex items-center space-x-3 text-slate-500 font-medium">
+          <span>
+            Total: <strong className="text-slate-900">{activeItems.length}</strong> items
+          </span>
           <Link
             href="/admin/products"
-            className="flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm"
+            className="text-blue-600 hover:underline font-bold hidden md:inline"
           >
-            <span>Products Catalog</span>
-            <ArrowRight className="w-4 h-4" />
+            View in Catalog →
           </Link>
         </div>
       </div>
 
-      {loading ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-3">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Loading Attributes from MongoDB...
-          </p>
+      {/* ======================================================== */}
+      {/* 3. ACTIVE ATTRIBUTE ITEMS TABLE (NO CLUTTERED BOXES)     */}
+      {/* ======================================================== */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          {loading ? (
+            <div className="py-24 text-center space-y-3">
+              <div className="w-9 h-9 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Loading {currentTabObj.label} from MongoDB...
+              </p>
+            </div>
+          ) : activeItems.length === 0 ? (
+            <div className="py-20 text-center space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center mx-auto text-slate-400">
+                <CurrentIcon className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-800">
+                  No {currentTabObj.label} found
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  {searchQuery
+                    ? `No presets match "${searchQuery}". Click below to add it.`
+                    : `No ${currentTabObj.label.toLowerCase()} configured in database yet.`}
+                </p>
+              </div>
+              <button
+                onClick={handleOpenCreateModal}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/20"
+              >
+                + Add First {currentTabObj.label.split(' ')[0]}
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider sticky top-0 z-10">
+                  <tr>
+                    <th className="py-3.5 px-4">#</th>
+                    <th className="py-3.5 px-4">Attribute Name</th>
+                    <th className="py-3.5 px-4">Type</th>
+                    <th className="py-3.5 px-4">
+                      {activeTab === 'color'
+                        ? 'Color Swatch & Hex'
+                        : activeTab === 'material'
+                        ? 'GSM Weight'
+                        : activeTab === 'badge'
+                        ? 'Badge Preview'
+                        : 'Slug Key'}
+                    </th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {activeItems.map((item, idx) => {
+                    const isColor = item.type === 'color';
+                    const isMaterial = item.type === 'material';
+                    const isBadge = item.type === 'badge';
+
+                    return (
+                      <tr key={item._id} className="hover:bg-slate-50/80 transition-colors">
+                        {/* Index */}
+                        <td className="py-3.5 px-4 font-mono text-slate-400 font-bold w-12">
+                          #{idx + 1}
+                        </td>
+
+                        {/* Name */}
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900 text-sm flex items-center space-x-2">
+                            {isColor && (
+                              <span
+                                className="w-4 h-4 rounded-full border border-slate-300 shadow-sm flex-shrink-0"
+                                style={{ backgroundColor: item.value || '#000000' }}
+                              />
+                            )}
+                            <span>{item.name}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 font-mono">
+                            /{item.slug || item.name.toLowerCase().replace(/\s+/g, '-')}
+                          </div>
+                        </td>
+
+                        {/* Type Badge */}
+                        <td className="py-3.5 px-4">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 font-bold text-[10px] uppercase tracking-wider border border-blue-200/60">
+                            {item.type}
+                          </span>
+                        </td>
+
+                        {/* Spec / Value Column */}
+                        <td className="py-3.5 px-4">
+                          {isColor ? (
+                            <div className="flex items-center space-x-2 font-mono text-slate-700 font-bold">
+                              <span className="text-[11px]">{item.value || '#000000'}</span>
+                            </div>
+                          ) : isMaterial ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold text-[11px] border border-emerald-200">
+                              {item.value || '240 GSM'}
+                            </span>
+                          ) : isBadge ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-900 text-white font-black text-[9px] uppercase tracking-wider">
+                              {item.name}
+                            </span>
+                          ) : (
+                            <span className="font-mono text-slate-500 text-[11px]">
+                              {item.slug || '-'}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Status */}
+                        <td className="py-3.5 px-4">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              item.isActive !== false
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-slate-100 text-slate-500 border border-slate-200'
+                            }`}
+                          >
+                            {item.isActive !== false ? 'Active' : 'Draft'}
+                          </span>
+                        </td>
+
+                        {/* Actions (Pencil Edit + Trash Delete) */}
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end space-x-1.5">
+                            {/* Edit Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(item)}
+                              className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              title="Edit Attribute"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+
+                            {/* Delete Button */}
+                            <button
+                              type="button"
+                              onClick={() => requestDelete(item)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="Delete from Database"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Table Footer */}
+          <div className="px-6 py-3.5 bg-slate-50/60 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+            <div>
+              Displaying <strong className="text-slate-900">{activeItems.length}</strong> {currentTabObj.label} in MongoDB
+            </div>
+            <button
+              onClick={handleOpenCreateModal}
+              className="text-blue-600 hover:text-blue-800 font-bold hover:underline"
+            >
+              + Add Another {currentTabObj.label.split(' ')[0]}
+            </button>
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* 1. FIT STYLES */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      </div>
+
+      {/* ======================================================== */}
+      {/* 4. ADD / EDIT ATTRIBUTE POPUP MODAL                      */}
+      {/* ======================================================== */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-slate-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
               <div className="flex items-center space-x-2">
-                <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <Tag className="w-4 h-4" />
+                </div>
                 <div>
-                  <h2 className="text-sm font-black text-slate-900 uppercase">Fit Styles</h2>
-                  <p className="text-[11px] text-slate-500">Cut & silhouette presets</p>
+                  <h3 className="text-base font-bold text-slate-900">
+                    {editingItem ? 'Edit Attribute' : 'Add New Attribute'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Saves permanently to MongoDB taxonomy
+                  </p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg">
-                {fits.length} Options
-              </span>
-            </div>
-
-            <form onSubmit={handleAddFit} className="flex gap-2">
-              <input
-                type="text"
-                value={newFit}
-                onChange={(e) => setNewFit(e.target.value)}
-                placeholder="e.g. Ultra Oversized"
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:bg-white focus:border-blue-500"
-              />
               <button
-                type="submit"
-                disabled={addingType === 'fit' || !newFit.trim()}
-                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
               >
-                {addingType === 'fit' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Add'}
+                <X className="w-5 h-5" />
               </button>
-            </form>
-
-            <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1">
-              {fits.map((item) => (
-                <span
-                  key={item._id}
-                  className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs font-bold"
-                >
-                  <span>{item.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => requestDelete(item)}
-                    className="text-indigo-400 hover:text-rose-600 transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
             </div>
-          </div>
 
-          {/* 2. THEMES & AESTHETICS */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="w-4 h-4 text-sky-600" />
-                <div>
-                  <h2 className="text-sm font-black text-slate-900 uppercase">Theme Tags</h2>
-                  <p className="text-[11px] text-slate-500">Design aesthetics & subcultures</p>
-                </div>
+            {/* Modal Form */}
+            <form onSubmit={handleSaveAttribute} className="p-6 space-y-4 text-xs">
+              {/* Type Selector Dropdown */}
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Attribute Type *</label>
+                <select
+                  value={modalForm.type}
+                  onChange={(e) => setModalForm((prev) => ({ ...prev, type: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 font-semibold focus:bg-white focus:border-blue-500 outline-none cursor-pointer"
+                >
+                  {ATTRIBUTE_TABS.map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.label} ({t.key})
+                    </option>
+                  ))}
+                </select>
               </div>
-              <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg">
-                {themes.length} Options
-              </span>
-            </div>
 
-            <form onSubmit={handleAddTheme} className="flex gap-2">
-              <input
-                type="text"
-                value={newTheme}
-                onChange={(e) => setNewTheme(e.target.value)}
-                placeholder="e.g. Y2K Street"
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:bg-white focus:border-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={addingType === 'theme' || !newTheme.trim()}
-                className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
-              >
-                {addingType === 'theme' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Add'}
-              </button>
-            </form>
-
-            <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1">
-              {themes.map((item) => (
-                <span
-                  key={item._id}
-                  className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-800 text-xs font-bold"
-                >
-                  <span>{item.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => requestDelete(item)}
-                    className="text-sky-400 hover:text-rose-600 transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* 3. RIBBON BADGES */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <Flame className="w-4 h-4 text-rose-600" />
-                <div>
-                  <h2 className="text-sm font-black text-slate-900 uppercase">Ribbon Badges</h2>
-                  <p className="text-[11px] text-slate-500">Thumbnail tags & marketing labels</p>
-                </div>
+              {/* Name Input */}
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Attribute Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder={
+                    modalForm.type === 'fit'
+                      ? 'e.g. Ultra Oversized Cut'
+                      : modalForm.type === 'theme'
+                      ? 'e.g. Y2K Street'
+                      : modalForm.type === 'badge'
+                      ? 'e.g. EXCLUSIVE DROP'
+                      : modalForm.type === 'color'
+                      ? 'e.g. Pitch Black'
+                      : modalForm.type === 'material'
+                      ? 'e.g. 100% French Terry Cotton'
+                      : 'e.g. Acid Wash Series'
+                  }
+                  value={modalForm.name}
+                  onChange={(e) => setModalForm((prev) => ({ ...prev, name: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 font-semibold focus:bg-white focus:border-blue-500 outline-none"
+                />
               </div>
-              <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg">
-                {badges.length} Badges
-              </span>
-            </div>
 
-            <form onSubmit={handleAddBadge} className="flex gap-2">
-              <input
-                type="text"
-                value={newBadge}
-                onChange={(e) => setNewBadge(e.target.value)}
-                placeholder="e.g. EXCLUSIVE DROP"
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:bg-white focus:border-blue-500 uppercase"
-              />
-              <button
-                type="submit"
-                disabled={addingType === 'badge' || !newBadge.trim()}
-                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
-              >
-                {addingType === 'badge' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Add'}
-              </button>
-            </form>
-
-            <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1">
-              {badges.map((item) => (
-                <span
-                  key={item._id}
-                  className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-black uppercase"
-                >
-                  <span>{item.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => requestDelete(item)}
-                    className="text-rose-300 hover:text-rose-600 transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* 4. FABRICS & MATERIALS */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <Tag className="w-4 h-4 text-emerald-600" />
-                <div>
-                  <h2 className="text-sm font-black text-slate-900 uppercase">Fabrics & GSM</h2>
-                  <p className="text-[11px] text-slate-500">Fabric weight & composition presets</p>
+              {/* Special Value Input (Color Picker or GSM) */}
+              {modalForm.type === 'color' && (
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Hex Color Swatch *</label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="color"
+                      value={modalForm.value || '#0a0a0c'}
+                      onChange={(e) => setModalForm((prev) => ({ ...prev, value: e.target.value }))}
+                      className="w-10 h-10 p-0.5 rounded-xl border border-slate-200 bg-white cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      placeholder="#0a0a0c"
+                      value={modalForm.value || '#0a0a0c'}
+                      onChange={(e) => setModalForm((prev) => ({ ...prev, value: e.target.value }))}
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 font-mono font-bold focus:bg-white focus:border-blue-500 outline-none"
+                    />
+                  </div>
                 </div>
-              </div>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                {materials.length} Presets
-              </span>
-            </div>
+              )}
 
-            <form onSubmit={handleAddMaterial} className="flex gap-2">
-              <input
-                type="text"
-                value={newMaterial}
-                onChange={(e) => setNewMaterial(e.target.value)}
-                placeholder="e.g. 100% Cotton (280 GSM)"
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:bg-white focus:border-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={addingType === 'material' || !newMaterial.trim()}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
-              >
-                {addingType === 'material' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Add'}
-              </button>
-            </form>
-
-            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-              {materials.map((item) => (
-                <div
-                  key={item._id}
-                  className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"
-                >
-                  <span className="font-semibold text-slate-800 truncate mr-2">{item.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => requestDelete(item)}
-                    className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 5. COLOR PALETTES */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <Palette className="w-4 h-4 text-purple-600" />
-                <div>
-                  <h2 className="text-sm font-black text-slate-900 uppercase">Color Swatches</h2>
-                  <p className="text-[11px] text-slate-500">Color names & hex codes</p>
-                </div>
-              </div>
-              <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg">
-                {colors.length} Colors
-              </span>
-            </div>
-
-            <form onSubmit={handleAddColor} className="flex gap-2">
-              <input
-                type="color"
-                value={newColor.hex}
-                onChange={(e) => setNewColor((prev) => ({ ...prev, hex: e.target.value }))}
-                className="w-10 h-9 p-0.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
-                title="Select Hex Color"
-              />
-              <input
-                type="text"
-                value={newColor.name}
-                onChange={(e) => setNewColor((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="Color Name (e.g. Onyx)"
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:bg-white focus:border-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={addingType === 'color' || !newColor.name.trim()}
-                className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
-              >
-                {addingType === 'color' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Add'}
-              </button>
-            </form>
-
-            <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1">
-              {colors.map((item) => (
-                <span
-                  key={item._id}
-                  className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold"
-                >
-                  <span
-                    className="w-3.5 h-3.5 rounded-full border border-slate-300 shadow-sm"
-                    style={{ backgroundColor: item.value || '#000000' }}
+              {modalForm.type === 'material' && (
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">GSM Fabric Weight</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 260 GSM"
+                    value={modalForm.value}
+                    onChange={(e) => setModalForm((prev) => ({ ...prev, value: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 font-semibold focus:bg-white focus:border-blue-500 outline-none font-mono"
                   />
-                  <span>{item.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => requestDelete(item)}
-                    className="text-slate-400 hover:text-rose-600 transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
+                </div>
+              )}
 
-          {/* 6. SIGNATURE CAPSULES & DROPS */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <Layers className="w-4 h-4 text-amber-600" />
+              {/* Status Toggle Switch */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                 <div>
-                  <h2 className="text-sm font-black text-slate-900 uppercase">Capsule Drops</h2>
-                  <p className="text-[11px] text-slate-500">Collection name classifications</p>
+                  <span className="font-bold text-slate-900 block">
+                    Status: {modalForm.isActive ? 'Active' : 'Disabled'}
+                  </span>
+                  <p className="text-[11px] text-slate-500">
+                    Active attributes appear in product creation dropdowns.
+                  </p>
                 </div>
-              </div>
-              <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg">
-                {collections.length} Drops
-              </span>
-            </div>
-
-            <form onSubmit={handleAddCollection} className="flex gap-2">
-              <input
-                type="text"
-                value={newCollection}
-                onChange={(e) => setNewCollection(e.target.value)}
-                placeholder="e.g. Acid Wash Series"
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:bg-white focus:border-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={addingType === 'collection' || !newCollection.trim()}
-                className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
-              >
-                {addingType === 'collection' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Add'}
-              </button>
-            </form>
-
-            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-              {collections.map((item) => (
-                <div
-                  key={item._id}
-                  className="flex items-center justify-between p-2 rounded-xl bg-amber-50/50 border border-amber-200/60 text-xs"
+                <button
+                  type="button"
+                  onClick={() => setModalForm((prev) => ({ ...prev, isActive: !prev.isActive }))}
+                  className={`w-12 h-6 rounded-full p-0.5 transition-colors duration-200 flex items-center ${
+                    modalForm.isActive ? 'bg-blue-600 justify-end' : 'bg-slate-300 justify-start'
+                  }`}
                 >
-                  <span className="font-semibold text-amber-950 truncate mr-2">{item.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => requestDelete(item)}
-                    className="p-1 text-amber-600 hover:text-rose-600 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
+                  <div className="w-5 h-5 rounded-full bg-white shadow-md" />
+                </button>
+              </div>
+
+              {/* Modal Action Buttons */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold transition-colors"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 flex items-center space-x-2"
+                >
+                  {isSubmitting ? (
+                    <span>Saving...</span>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>{editingItem ? 'Update Attribute' : 'Save Attribute'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Reusable Delete Confirmation Popup */}
+      {/* ======================================================== */}
+      {/* 5. DELETE CONFIRMATION MODAL                             */}
+      {/* ======================================================== */}
       <ConfirmModal
         isOpen={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false);
+            setItemToDelete(null);
+          }
+        }}
         onConfirm={handleConfirmDelete}
-        title={`Delete ${itemToDelete?.type ? itemToDelete.type.toUpperCase() : 'Attribute'}`}
-        message={`Are you sure you want to permanently delete "${itemToDelete?.name}" from MongoDB?`}
+        title="Delete Attribute Preset"
+        message={`Are you sure you want to permanently delete "${itemToDelete?.name}" from MongoDB? Products referencing this value will keep their text, but it won't appear in dropdown presets.`}
         itemName={itemToDelete?.name || ''}
-        confirmText="Permanently Delete"
+        confirmText={isDeleting ? 'Deleting...' : 'Delete Permanently'}
+        isLoading={isDeleting}
         isDanger={true}
       />
     </div>
