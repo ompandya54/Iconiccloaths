@@ -80,8 +80,14 @@ export default function ProductDetailPage() {
             setActiveImage(prod.image || '/images/prod_minimal.jpg');
           }
 
-          if (prod.sizes && prod.sizes.length > 0) {
-            setSelectedSize(prod.sizes[0]);
+          const availableSizesList = Array.isArray(prod.sizes) && prod.sizes.length > 0
+            ? prod.sizes
+            : (Array.isArray(prod.variants) && prod.variants.length > 0
+                ? [...new Set(prod.variants.map((v) => v.size).filter(Boolean))]
+                : []);
+
+          if (availableSizesList.length > 0) {
+            setSelectedSize(availableSizesList[0]);
           }
         } else {
           setError('Product not found');
@@ -170,6 +176,19 @@ export default function ProductDetailPage() {
         typeof c === 'string' ? { name: c, hex: '#0a0a0a', image: product.image } : c
       )
     : [];
+
+  // Only display color picker if product has actual distinct colorways (not just a single dummy 'DEFAULT')
+  const hasRealColors =
+    colorsList.length > 1 ||
+    (colorsList.length === 1 && colorsList[0]?.name && colorsList[0]?.name.toLowerCase() !== 'default');
+
+  // Exact sizes configured for this specific product (no hardcoded fake fallback sizes)
+  const availableSizes =
+    Array.isArray(product.sizes) && product.sizes.length > 0
+      ? product.sizes
+      : (Array.isArray(product.variants) && product.variants.length > 0
+          ? [...new Set(product.variants.map((v) => v.size).filter(Boolean))]
+          : []);
 
   const rawImages = colorsList.map((c) => c?.image).filter(Boolean);
   if (product.image && !rawImages.includes(product.image)) {
@@ -308,8 +327,8 @@ export default function ProductDetailPage() {
               </span>
             </div>
 
-            {/* Color Swatches Selection */}
-            {colorsList.length > 0 && (
+            {/* Color Swatches Selection (Only shown when real colors exist) */}
+            {hasRealColors && (
               <div>
                 <div className="flex items-center justify-between text-xs uppercase tracking-wider mb-2">
                   <span className="text-neutral-400 text-[11px]">
@@ -345,38 +364,40 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {/* Size Selector */}
-            <div>
-              <div className="flex items-center justify-between text-xs uppercase tracking-wider mb-2">
-                <span className="text-neutral-400 text-[11px]">
-                  Select Size: <strong className="text-white font-semibold">{selectedSize}</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsSizeChartOpen(true)}
-                  className="flex items-center gap-1 text-[11px] text-neutral-300 hover:text-white font-syne uppercase tracking-wider underline underline-offset-4 cursor-pointer"
-                >
-                  <Ruler className="w-3 h-3" /> Size Guide
-                </button>
-              </div>
-
-              <div className="grid grid-cols-5 gap-2">
-                {(product.sizes || ['S', 'M', 'L', 'XL', 'XXL']).map((size) => (
+            {/* Size Selector (Exact Sizes Configured in Admin) */}
+            {availableSizes.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between text-xs uppercase tracking-wider mb-2">
+                  <span className="text-neutral-400 text-[11px]">
+                    Select Size: <strong className="text-white font-semibold">{selectedSize}</strong>
+                  </span>
                   <button
-                    key={size}
                     type="button"
-                    onClick={() => setSelectedSize(size)}
-                    className={`py-2 text-xs font-mono font-bold tracking-widest uppercase transition-all border cursor-pointer ${
-                      selectedSize === size
-                        ? 'bg-white text-black border-white font-black shadow-sm'
-                        : 'bg-neutral-950 text-neutral-300 border-white/15 hover:border-white/50'
-                    }`}
+                    onClick={() => setIsSizeChartOpen(true)}
+                    className="flex items-center gap-1 text-[11px] text-neutral-300 hover:text-white font-syne uppercase tracking-wider underline underline-offset-4 cursor-pointer"
                   >
-                    {size}
+                    <Ruler className="w-3 h-3" /> Size Guide
                   </button>
-                ))}
+                </div>
+
+                <div className="flex flex-wrap gap-2.5">
+                  {availableSizes.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setSelectedSize(size)}
+                      className={`min-w-[48px] px-3.5 py-2 text-xs font-mono font-bold tracking-widest uppercase transition-all border cursor-pointer ${
+                        selectedSize === size
+                          ? 'bg-white text-black border-white font-black shadow-sm'
+                          : 'bg-neutral-950 text-neutral-300 border-white/15 hover:border-white/50'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Quantity Counter & Add To Cart (Compact Single Row / Stack) */}
             <div className="pt-2 flex items-center gap-3">
