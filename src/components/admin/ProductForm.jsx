@@ -88,10 +88,8 @@ export default function ProductForm({
   ]);
 
   // Active Colorways for Pattern B (Colorway Cards with dedicated image & live hex)
-  const [activeColorways, setActiveColorways] = useState([
-    { name: 'Pitch Black', hex: '#0a0a0c', image: '' },
-    { name: 'Pure White', hex: '#ffffff', image: '' },
-  ]);
+  // Starts empty so no unwanted default colors or forced hex codes are locked in
+  const [activeColorways, setActiveColorways] = useState([]);
 
   // Loading state for dedicated colorway image upload
   const [uploadingColorway, setUploadingColorway] = useState('');
@@ -161,16 +159,7 @@ export default function ProductForm({
     image: '',
     images: [],
     hasVariants: false,
-    variants: [
-      { size: 'S', color: 'Pitch Black', price: '', stock: 25 },
-      { size: 'M', color: 'Pitch Black', price: '', stock: 25 },
-      { size: 'L', color: 'Pitch Black', price: '', stock: 25 },
-      { size: 'XL', color: 'Pitch Black', price: '', stock: 25 },
-      { size: 'S', color: 'Pure White', price: '', stock: 25 },
-      { size: 'M', color: 'Pure White', price: '', stock: 25 },
-      { size: 'L', color: 'Pure White', price: '', stock: 25 },
-      { size: 'XL', color: 'Pure White', price: '', stock: 25 },
-    ],
+    variants: [],
     isActive: true,
     isBestseller: false,
     isFeatured: false,
@@ -243,44 +232,60 @@ export default function ProductForm({
       });
 
       // Populate active colorways from existing product
-      if (Array.isArray(product.variants) && product.variants.length > 0) {
+      if (Array.isArray(product.colors) && product.colors.length > 0) {
+        const loadedColorways = product.colors.map((c) => {
+          if (typeof c === 'string') {
+            return {
+              name: c,
+              hex: '#000000',
+              image: '',
+            };
+          }
+          return {
+            name: c.name || 'Default',
+            hex: c.hex ? (c.hex.startsWith('#') ? c.hex : `#${c.hex}`) : '#000000',
+            image: c.image || '',
+          };
+        });
+
+        // Include any additional colors present in variants
+        if (Array.isArray(product.variants) && product.variants.length > 0) {
+          const variantColors = [...new Set(product.variants.map((v) => v.color).filter((col) => col && col !== 'Default'))];
+          variantColors.forEach((vc) => {
+            if (!loadedColorways.some((cw) => cw.name.toLowerCase() === vc.toLowerCase())) {
+              const matchVariant = product.variants.find((v) => (v.color || '').toLowerCase() === vc.toLowerCase());
+              loadedColorways.push({
+                name: vc,
+                hex: '#000000',
+                image: matchVariant?.image || '',
+              });
+            }
+          });
+        }
+
+        setActiveColorways(loadedColorways);
+
+        // Sync loaded colors to availableColorAttributes
+        setAvailableColorAttributes((prev) => {
+          const map = new Map(prev.map((a) => [a.name.toLowerCase(), a]));
+          loadedColorways.forEach((cw) => {
+            map.set(cw.name.toLowerCase(), { name: cw.name, value: cw.hex || '#000000' });
+          });
+          return Array.from(map.values());
+        });
+      } else if (Array.isArray(product.variants) && product.variants.length > 0) {
         const existColors = [...new Set(product.variants.map((v) => v.color).filter((c) => c && c !== 'Default'))];
-        const productColors = Array.isArray(product.colors)
-          ? product.colors.map((c) => (typeof c === 'string' ? { name: c, hex: '#0a0a0a' } : c))
-          : [];
-
-        const allColorsList = [...new Set([...existColors, ...productColors.map((c) => c.name).filter(Boolean)])];
-
-        if (allColorsList.length > 0) {
-          const loadedColorways = allColorsList.map((cName) => {
-            const matchTaxonomy = availableColorAttributes.find((a) => a.name?.toLowerCase() === cName?.toLowerCase());
-            const matchProdColor = productColors.find((c) => c.name?.toLowerCase() === cName?.toLowerCase());
+        if (existColors.length > 0) {
+          const loadedColorways = existColors.map((cName) => {
+            const matchVariant = product.variants.find((v) => (v.color || '').toLowerCase() === cName.toLowerCase());
             return {
               name: cName,
-              hex: matchProdColor?.hex || matchTaxonomy?.value || (cName.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c'),
-              image: matchProdColor?.image || '',
+              hex: '#000000',
+              image: matchVariant?.image || '',
             };
           });
           setActiveColorways(loadedColorways);
-
-          setAvailableColorAttributes((prev) => {
-            const map = new Map(prev.map((a) => [a.name.toLowerCase(), a]));
-            allColorsList.forEach((c) => {
-              if (!map.has(c.toLowerCase())) {
-                const matchProdColor = productColors.find((pc) => pc.name?.toLowerCase() === c.toLowerCase());
-                map.set(c.toLowerCase(), { name: c, value: matchProdColor?.hex || '#0a0a0c' });
-              }
-            });
-            return Array.from(map.values());
-          });
         }
-      } else if (Array.isArray(product.colors) && product.colors.length > 0) {
-        const productColors = product.colors.map((c) =>
-          typeof c === 'string'
-            ? { name: c, hex: c.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c', image: '' }
-            : { name: c.name, hex: c.hex || (c.name.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c'), image: c.image || '' }
-        );
-        setActiveColorways(productColors);
       }
     }
   }, [product]);
@@ -403,7 +408,7 @@ export default function ProductForm({
     const matchAttr = availableColorAttributes.find(
       (a) => a.name.toLowerCase() === trimmed.toLowerCase()
     );
-    const hex = customHex || matchAttr?.value || (trimmed.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c');
+    const hex = customHex || matchAttr?.value || (trimmed.toLowerCase().includes('white') ? '#ffffff' : '#000000');
 
     const newColorway = { name: trimmed, hex, image: '' };
     setActiveColorways((prev) => [...prev, newColorway]);
@@ -478,7 +483,7 @@ export default function ProductForm({
 
   // Update Colorway HEX code live (dynamic swatch & attribute sync)
   const handleUpdateColorwayHex = (colorName, newHex) => {
-    let cleanHex = newHex.trim();
+    let cleanHex = (newHex || '').trim();
     if (cleanHex && !cleanHex.startsWith('#')) {
       cleanHex = `#${cleanHex}`;
     }
@@ -489,13 +494,15 @@ export default function ProductForm({
           : cw
       )
     );
-    setAvailableColorAttributes((prev) =>
-      prev.map((a) =>
-        a.name.toLowerCase() === colorName.toLowerCase()
-          ? { ...a, value: cleanHex }
-          : a
-      )
-    );
+    if (cleanHex) {
+      setAvailableColorAttributes((prev) =>
+        prev.map((a) =>
+          a.name.toLowerCase() === colorName.toLowerCase()
+            ? { ...a, value: cleanHex }
+            : a
+        )
+      );
+    }
   };
 
   // 2. Remove an entire Colorway card and all its sizes
@@ -705,37 +712,23 @@ export default function ProductForm({
       autoBadge = 'FEATURED';
     }
 
-    // Extract unique colors from variants
-    const uniqueColorsFromVariants = formData.hasVariants && formData.variants.length > 0
-      ? [...new Set(formData.variants.map((v) => v.color).filter(Boolean))]
-      : (activeColorways.length > 0 ? activeColorways.map((cw) => cw.name) : ['Pitch Black']);
-
-    // Build payload.colors array with dedicated colorway images & hex codes
-    const payloadColors = (formData.hasVariants && activeColorways.length > 0)
-      ? activeColorways
-          .filter((cw) => uniqueColorsFromVariants.some((c) => c.toLowerCase() === cw.name.toLowerCase()))
-          .map((cw) => ({
-            name: cw.name,
-            hex: cw.hex || (cw.name.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c'),
-            image: cw.image || primaryImg,
-          }))
-      : uniqueColorsFromVariants.map((cName) => {
-          const matchCw = activeColorways.find((cw) => cw.name.toLowerCase() === cName.toLowerCase());
-          const matchAttr = availableColorAttributes.find((a) => a.name?.toLowerCase() === cName?.toLowerCase());
-          return {
-            name: cName,
-            hex: matchCw?.hex || matchAttr?.value || (cName.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c'),
-            image: matchCw?.image || primaryImg,
-          };
-        });
-
-    const finalColors = payloadColors.length > 0
-      ? payloadColors
-      : activeColorways.map((cw) => ({
-          name: cw.name,
-          hex: cw.hex || '#0a0a0c',
+    // Build payload.colors array directly from activeColorways (preserves exact hex and images without default fallbacks)
+    const payloadColors = activeColorways.length > 0
+      ? activeColorways.map((cw) => ({
+          name: cw.name.trim(),
+          hex: cw.hex && cw.hex.startsWith('#') ? cw.hex : (cw.hex ? `#${cw.hex}` : '#000000'),
           image: cw.image || primaryImg,
-        }));
+        }))
+      : (formData.hasVariants && formData.variants.length > 0
+          ? [...new Set(formData.variants.map((v) => v.color).filter(Boolean))].map((cName) => {
+              const matchAttr = availableColorAttributes.find((a) => a.name?.toLowerCase() === cName?.toLowerCase());
+              return {
+                name: cName,
+                hex: matchAttr?.value || '#000000',
+                image: primaryImg,
+              };
+            })
+          : []);
 
     const payload = {
       name: formData.name.trim(),
@@ -754,7 +747,7 @@ export default function ProductForm({
       description: formData.description.trim(),
       image: primaryImg,
       images: allImages,
-      colors: finalColors.length > 0 ? finalColors : [{ name: 'Pitch Black', hex: '#0a0a0c', image: primaryImg }],
+      colors: payloadColors,
       sizes: availableSizes,
       hasVariants: formData.hasVariants,
       variants: formData.hasVariants
@@ -1411,14 +1404,14 @@ export default function ProductForm({
                                   <input
                                     type="color"
                                     id={`color-picker-${cw.name.replace(/\s+/g, '-')}`}
-                                    value={cw.hex && cw.hex.startsWith('#') && cw.hex.length === 7 ? cw.hex : (cw.name.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c')}
+                                    value={cw.hex && /^#[0-9A-Fa-f]{6}$/.test(cw.hex) ? cw.hex : '#000000'}
                                     onChange={(e) => handleUpdateColorwayHex(cw.name, e.target.value)}
                                     className="absolute inset-0 opacity-0 w-6 h-6 cursor-pointer"
                                     title="Click to visually pick color"
                                   />
                                   <span
                                     className="w-6 h-6 rounded-full border-2 border-white ring-1 ring-slate-300 shadow-xs cursor-pointer flex-shrink-0 transition-transform hover:scale-110"
-                                    style={{ backgroundColor: cw.hex || '#0a0a0c' }}
+                                    style={{ backgroundColor: cw.hex && /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(cw.hex) ? cw.hex : '#000000' }}
                                     title="Click to choose color from palette"
                                   />
                                 </div>
@@ -1433,15 +1426,15 @@ export default function ProductForm({
                                   <span className="text-[11px] font-mono font-bold text-slate-400 mr-0.5">#</span>
                                   <input
                                     type="text"
-                                    value={(cw.hex || '#0a0a0c').replace(/^#/, '')}
+                                    value={(cw.hex || '').replace(/^#/, '')}
                                     onChange={(e) => {
                                       const val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6);
-                                      handleUpdateColorwayHex(cw.name, `#${val}`);
+                                      handleUpdateColorwayHex(cw.name, val ? `#${val}` : '');
                                     }}
-                                    placeholder="0A0A0C"
+                                    placeholder="000000"
                                     maxLength={6}
                                     className="w-16 text-[11px] font-mono font-bold text-slate-800 uppercase outline-none bg-transparent"
-                                    title="Type 6-character hex code (e.g. 0A0A0C, FFFFFF, 1E3A8A)"
+                                    title="Type 6-character hex code"
                                   />
                                 </div>
 
