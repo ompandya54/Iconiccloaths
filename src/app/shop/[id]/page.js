@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 import QuickViewModal from '@/components/QuickViewModal';
 import { getProductById, getProducts } from '@/app/api/productapi';
@@ -70,9 +69,13 @@ export default function ProductDetailPage() {
           setProduct(prod);
 
           // Set initial active color and image
-          if (prod.colors && prod.colors.length > 0) {
-            setSelectedColor(prod.colors[0]);
-            setActiveImage(prod.colors[0].image || prod.image || '/images/prod_minimal.jpg');
+          const normalizedColors = Array.isArray(prod.colors)
+            ? prod.colors.map(c => typeof c === 'string' ? { name: c, hex: '#0a0a0a', image: prod.image || '/images/prod_minimal.jpg' } : c)
+            : [];
+
+          if (normalizedColors.length > 0) {
+            setSelectedColor(normalizedColors[0]);
+            setActiveImage(normalizedColors[0].image || prod.image || '/images/prod_minimal.jpg');
           } else {
             setActiveImage(prod.image || '/images/prod_minimal.jpg');
           }
@@ -153,9 +156,20 @@ export default function ProductDetailPage() {
   }
 
   // Gallery Images array (fallback to single image if array not present)
-  const images = product.colors && product.colors.length > 0
-    ? product.colors.map(c => c.image).filter(Boolean)
-    : [product.image || '/images/prod_minimal.jpg'];
+  const colorsList = Array.isArray(product.colors) && product.colors.length > 0
+    ? product.colors.map(c => typeof c === 'string' ? { name: c, hex: '#0a0a0a', image: product.image } : c)
+    : [];
+
+  const rawImages = colorsList.map(c => c?.image).filter(Boolean);
+  if (product.image && !rawImages.includes(product.image)) {
+    rawImages.unshift(product.image);
+  }
+  if (Array.isArray(product.images)) {
+    product.images.forEach(img => {
+      if (img && !rawImages.includes(img)) rawImages.push(img);
+    });
+  }
+  const images = rawImages.length > 0 ? rawImages : [product.image || '/images/prod_minimal.jpg'];
 
   const discountPercent = product.originalPrice && product.originalPrice > product.price
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
@@ -163,8 +177,6 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col font-sans selection:bg-white selection:text-black">
-      <Navbar />
-
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 w-full">
         {/* Breadcrumb Bar */}
         <div className="flex items-center text-xs text-neutral-400 tracking-wider mb-8 uppercase font-syne">
@@ -192,7 +204,12 @@ export default function ProductDetailPage() {
                       activeImage === imgUrl ? 'border-white ring-1 ring-white' : 'border-white/10 hover:border-white/40'
                     }`}
                   >
-                    <Image src={imgUrl} alt={`Thumbnail ${idx + 1}`} fill className="object-cover" />
+                    <img
+                      src={imgUrl}
+                      alt={`Thumbnail ${idx + 1}`}
+                      onError={(e) => { e.currentTarget.src = '/images/prod_minimal.jpg'; }}
+                      className="w-full h-full object-cover"
+                    />
                   </button>
                 ))}
               </div>
@@ -200,12 +217,11 @@ export default function ProductDetailPage() {
 
             {/* Main Stage Image Container */}
             <div className="relative flex-1 aspect-[3/4] bg-neutral-950 border border-white/10 overflow-hidden group">
-              <Image
+              <img
                 src={activeImage || product.image || '/images/prod_minimal.jpg'}
                 alt={product.name}
-                fill
-                priority
-                className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                onError={(e) => { e.currentTarget.src = '/images/prod_minimal.jpg'; }}
+                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
               />
 
               {/* Badge Tag */}
@@ -269,30 +285,35 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Color Swatches Selection */}
-            {product.colors && product.colors.length > 0 && (
+            {colorsList.length > 0 && (
               <div>
                 <div className="flex items-center justify-between text-xs uppercase tracking-wider mb-3">
-                  <span className="text-neutral-400">Color: <strong className="text-white font-semibold">{selectedColor?.name}</strong></span>
+                  <span className="text-neutral-400">Color: <strong className="text-white font-semibold">{selectedColor?.name || (typeof selectedColor === 'string' ? selectedColor : 'Default')}</strong></span>
                 </div>
                 <div className="flex items-center gap-3">
-                  {product.colors.map((colorObj, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setSelectedColor(colorObj);
-                        if (colorObj.image) setActiveImage(colorObj.image);
-                      }}
-                      className={`relative w-8 h-8 rounded-full border-2 transition-all p-0.5 ${
-                        selectedColor?.name === colorObj.name ? 'border-white scale-110 ring-2 ring-white/30' : 'border-white/20 hover:border-white/60'
-                      }`}
-                      title={colorObj.name}
-                    >
-                      <span
-                        className="block w-full h-full rounded-full border border-black/20"
-                        style={{ backgroundColor: colorObj.hex }}
-                      />
-                    </button>
-                  ))}
+                  {colorsList.map((colorObj, idx) => {
+                    const cName = colorObj.name || (typeof colorObj === 'string' ? colorObj : `Color ${idx + 1}`);
+                    const cHex = colorObj.hex || '#0a0a0a';
+                    const isSelected = (selectedColor?.name === cName) || (selectedColor === colorObj);
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setSelectedColor(colorObj);
+                          if (colorObj.image) setActiveImage(colorObj.image);
+                        }}
+                        className={`relative w-8 h-8 rounded-full border-2 transition-all p-0.5 ${
+                          isSelected ? 'border-white scale-110 ring-2 ring-white/30' : 'border-white/20 hover:border-white/60'
+                        }`}
+                        title={cName}
+                      >
+                        <span
+                          className="block w-full h-full rounded-full border border-black/20"
+                          style={{ backgroundColor: cHex }}
+                        />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -488,11 +509,11 @@ export default function ProductDetailPage() {
                   className="group flex flex-col bg-neutral-950 border border-white/10 hover:border-white/30 transition-all p-3"
                 >
                   <div className="relative aspect-[3/4] bg-neutral-900 overflow-hidden mb-3">
-                    <Image
+                    <img
                       src={relProd.image || relProd.colors?.[0]?.image || '/images/prod_minimal.jpg'}
                       alt={relProd.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => { e.currentTarget.src = '/images/prod_minimal.jpg'; }}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <span className="absolute top-2 left-2 bg-white text-black font-syne text-3xs font-extrabold px-2 py-0.5 uppercase">
                       {relProd.badge || 'HOT'}
