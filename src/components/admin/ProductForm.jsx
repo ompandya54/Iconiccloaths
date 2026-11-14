@@ -89,11 +89,14 @@ export default function ProductForm({
     { name: 'Slate Blue', value: '#25344d' },
   ]);
 
-  // Selected Colors for Variant Matrix (multi-select)
-  const [selectedColorTags, setSelectedColorTags] = useState(['Pitch Black']);
+  // Variant Configuration Mode: 'by-size' (default) or 'by-color'
+  const [variantConfigMode, setVariantConfigMode] = useState('by-size');
 
-  // Selected Sizes for Variant Matrix (multi-select)
-  const [selectedSizeTags, setSelectedSizeTags] = useState(['S', 'M', 'L', 'XL']);
+  // Currently active Size being configured (e.g. 'M')
+  const [activeConfigSize, setActiveConfigSize] = useState('M');
+
+  // Currently active Color being configured (e.g. 'Pitch Black')
+  const [activeConfigColor, setActiveConfigColor] = useState('Pitch Black');
 
   // Custom Color Input in admin
   const [customColorInput, setCustomColorInput] = useState('');
@@ -219,19 +222,30 @@ export default function ProductForm({
         isNewArrival: product.isNewArrival !== false,
       });
 
-      // Populate selected colors & sizes from existing product
+      // Populate active sizes & colors from existing product
       if (Array.isArray(product.variants) && product.variants.length > 0) {
-        const existColors = [...new Set(product.variants.map((v) => v.color).filter((c) => c && c !== 'Default'))];
         const existSizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean))];
-        if (existColors.length > 0) setSelectedColorTags(existColors);
-        if (existSizes.length > 0) setSelectedSizeTags(existSizes);
-      } else {
-        if (Array.isArray(product.colors) && product.colors.length > 0) {
-          const cNames = product.colors.map((c) => (typeof c === 'string' ? c : c?.name)).filter(Boolean);
-          if (cNames.length > 0) setSelectedColorTags(cNames);
+        const existColors = [...new Set(product.variants.map((v) => v.color).filter((c) => c && c !== 'Default'))];
+        if (existSizes.length > 0) setActiveConfigSize(existSizes[0]);
+        if (existColors.length > 0) {
+          setActiveConfigColor(existColors[0]);
+          setAvailableColorAttributes((prev) => {
+            const map = new Map(prev.map((a) => [a.name.toLowerCase(), a]));
+            existColors.forEach((c) => {
+              if (!map.has(c.toLowerCase())) {
+                map.set(c.toLowerCase(), { name: c, value: '#0a0a0a' });
+              }
+            });
+            return Array.from(map.values());
+          });
         }
+      } else {
         if (Array.isArray(product.sizes) && product.sizes.length > 0) {
-          setSelectedSizeTags(product.sizes);
+          setActiveConfigSize(product.sizes[0]);
+        }
+        if (Array.isArray(product.colors) && product.colors.length > 0) {
+          const firstC = typeof product.colors[0] === 'string' ? product.colors[0] : product.colors[0]?.name;
+          if (firstC) setActiveConfigColor(firstC);
         }
       }
     }
@@ -338,56 +352,158 @@ export default function ProductForm({
     }));
   };
 
-  const handleToggleColor = (colorName) => {
-    setSelectedColorTags((prev) =>
-      prev.includes(colorName)
-        ? (prev.length > 1 ? prev.filter((c) => c !== colorName) : prev)
-        : [...prev, colorName]
-    );
+  // 1. Toggle a color for a specific size (used in 'by-size' mode)
+  const handleToggleColorForSize = (size, colorName) => {
+    const basePrice = formData.price || '1899';
+    const sUpper = (size || 'M').toUpperCase();
+    const cName = colorName.trim();
+
+    setFormData((prev) => {
+      const existingIdx = prev.variants.findIndex(
+        (v) => (v.size || '').toUpperCase() === sUpper && (v.color || '').toLowerCase() === cName.toLowerCase()
+      );
+
+      let updated;
+      if (existingIdx > -1) {
+        // Unselect: remove only this (size, color) combination
+        updated = prev.variants.filter((_, i) => i !== existingIdx);
+      } else {
+        // Select: add this (size, color) combination
+        updated = [
+          ...prev.variants,
+          {
+            size: sUpper,
+            color: cName,
+            price: basePrice,
+            stock: 25,
+            sku: `${formData.name || 'PROD'}-${cName.substring(0, 3)}-${sUpper}`.toUpperCase().replace(/\s+/g, '-'),
+          },
+        ];
+      }
+
+      return { ...prev, hasVariants: true, variants: updated };
+    });
   };
 
+  // 2. Toggle a size for a specific color (used in 'by-color' mode)
+  const handleToggleSizeForColor = (colorName, size) => {
+    handleToggleColorForSize(size, colorName);
+  };
+
+  // 3. Quick apply all colors to the currently active size
+  const handleAddAllColorsToCurrentSize = () => {
+    const basePrice = formData.price || '1899';
+    const sUpper = activeConfigSize.toUpperCase();
+
+    setFormData((prev) => {
+      const existingColorsForSize = new Set(
+        prev.variants
+          .filter((v) => (v.size || '').toUpperCase() === sUpper)
+          .map((v) => (v.color || '').toLowerCase())
+      );
+
+      const toAdd = availableColorAttributes.filter(
+        (a) => !existingColorsForSize.has(a.name.toLowerCase())
+      );
+
+      const newVariants = [
+        ...prev.variants,
+        ...toAdd.map((a) => ({
+          size: sUpper,
+          color: a.name,
+          price: basePrice,
+          stock: 25,
+          sku: `${formData.name || 'PROD'}-${a.name.substring(0, 3)}-${sUpper}`.toUpperCase().replace(/\s+/g, '-'),
+        })),
+      ];
+
+      return { ...prev, hasVariants: true, variants: newVariants };
+    });
+  };
+
+  // 4. Quick apply standard sizes (S, M, L, XL) to the currently active color
+  const handleAddAllSizesToCurrentColor = () => {
+    const basePrice = formData.price || '1899';
+    const cName = activeConfigColor.trim();
+
+    setFormData((prev) => {
+      const existingSizesForColor = new Set(
+        prev.variants
+          .filter((v) => (v.color || '').toLowerCase() === cName.toLowerCase())
+          .map((v) => (v.size || '').toUpperCase())
+      );
+
+      const toAdd = ['S', 'M', 'L', 'XL'].filter((s) => !existingSizesForColor.has(s));
+      const newVariants = [
+        ...prev.variants,
+        ...toAdd.map((s) => ({
+          size: s,
+          color: cName,
+          price: basePrice,
+          stock: 25,
+          sku: `${formData.name || 'PROD'}-${cName.substring(0, 3)}-${s}`.toUpperCase().replace(/\s+/g, '-'),
+        })),
+      ];
+
+      return { ...prev, hasVariants: true, variants: newVariants };
+    });
+  };
+
+  // 5. Add custom color
   const handleAddCustomColor = () => {
     const trimmed = customColorInput.trim();
     if (!trimmed) return;
-    if (!selectedColorTags.includes(trimmed)) {
-      setSelectedColorTags((prev) => [...prev, trimmed]);
+
+    if (!availableColorAttributes.some((a) => a.name.toLowerCase() === trimmed.toLowerCase())) {
+      setAvailableColorAttributes((prev) => [
+        ...prev,
+        { name: trimmed, value: '#0a0a0a' },
+      ]);
     }
+
+    if (variantConfigMode === 'by-size' && activeConfigSize) {
+      handleToggleColorForSize(activeConfigSize, trimmed);
+    } else {
+      setActiveConfigColor(trimmed);
+    }
+
     setCustomColorInput('');
   };
 
-  const handleToggleSize = (sizeName) => {
-    setSelectedSizeTags((prev) =>
-      prev.includes(sizeName)
-        ? (prev.length > 1 ? prev.filter((s) => s !== sizeName) : prev)
-        : [...prev, sizeName]
-    );
-  };
-
+  // 6. Quick full matrix (all active colors × all standard sizes)
   const handleGenerateVariantMatrix = () => {
     const basePrice = formData.price || '1899';
-    const colors = selectedColorTags.length > 0 ? selectedColorTags : ['Default'];
-    const sizes = selectedSizeTags.length > 0 ? selectedSizeTags : ['S', 'M', 'L', 'XL'];
+    const colors = availableColorAttributes.slice(0, 3).map((a) => a.name);
+    const sizes = ['S', 'M', 'L', 'XL'];
 
-    const matrix = [];
-    colors.forEach((c) => {
-      sizes.forEach((s) => {
-        const existing = formData.variants.find(
-          (v) => v.size?.toUpperCase() === s.toUpperCase() && v.color?.toLowerCase() === c.toLowerCase()
-        );
-        matrix.push({
-          size: s.toUpperCase(),
-          color: c,
-          price: existing?.price ? String(existing.price) : basePrice,
-          stock: existing?.stock !== undefined ? existing.stock : 25,
+    setFormData((prev) => {
+      const newVariants = [...prev.variants];
+      colors.forEach((c) => {
+        sizes.forEach((s) => {
+          const exists = newVariants.some(
+            (v) => (v.size || '').toUpperCase() === s && (v.color || '').toLowerCase() === c.toLowerCase()
+          );
+          if (!exists) {
+            newVariants.push({
+              size: s,
+              color: c,
+              price: basePrice,
+              stock: 25,
+              sku: `${formData.name || 'PROD'}-${c.substring(0, 3)}-${s}`.toUpperCase().replace(/\s+/g, '-'),
+            });
+          }
         });
       });
+      return { ...prev, hasVariants: true, variants: newVariants };
     });
+  };
 
-    setFormData((prev) => ({
-      ...prev,
-      hasVariants: true,
-      variants: matrix,
-    }));
+  // 7. Clear all variants
+  const handleClearAllVariants = () => {
+    if (formData.variants.length === 0) return;
+    if (window.confirm('Are you sure you want to clear all variant combinations?')) {
+      setFormData((prev) => ({ ...prev, variants: [] }));
+    }
   };
 
   const handleAutoGenerateSizes = () => {
@@ -466,10 +582,10 @@ export default function ProductForm({
       autoBadge = 'FEATURED';
     }
 
-    // Extract unique colors from variants or selected colors
+    // Extract unique colors from variants
     const uniqueColorsFromVariants = formData.hasVariants && formData.variants.length > 0
       ? [...new Set(formData.variants.map((v) => v.color).filter(Boolean))]
-      : (selectedColorTags.length > 0 ? selectedColorTags : ['Pitch Black']);
+      : (availableColorAttributes.length > 0 ? [availableColorAttributes[0].name] : ['Pitch Black']);
 
     // Build payload.colors array with hex codes from taxonomy
     const payloadColors = uniqueColorsFromVariants.map((cName) => {
@@ -948,14 +1064,6 @@ export default function ProductForm({
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
-                      onClick={handleGenerateVariantMatrix}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center space-x-1 cursor-pointer"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Sync Matrix ({selectedColorTags.length} Colors × {selectedSizeTags.length} Sizes)</span>
-                    </button>
-                    <button
-                      type="button"
                       onClick={handleAddVariantRow}
                       className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold flex items-center space-x-1 cursor-pointer"
                     >
@@ -968,193 +1076,396 @@ export default function ProductForm({
 
               {formData.hasVariants && (
                 <div className="space-y-4">
-                  {/* Step A: Color & Size Multi-Select Filters */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3.5">
-                    {/* Colors Multi-Select */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-800">
-                          Select Colors for Variants ({selectedColorTags.length}):
-                        </span>
-                        <span className="text-[11px] text-slate-500">
-                          Click to select multiple colors
-                        </span>
+                  {/* Step A: Mode Toggle & Interactive Configurator */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                    {/* Header with Mode Tabs and Quick Actions */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                      {/* Mode Pills: By Size vs By Color */}
+                      <div className="flex items-center space-x-1 bg-slate-200/80 p-1 rounded-xl">
+                        <button
+                          type="button"
+                          onClick={() => setVariantConfigMode('by-size')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            variantConfigMode === 'by-size'
+                              ? 'bg-white text-slate-900 shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Configure by Size
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setVariantConfigMode('by-color')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            variantConfigMode === 'by-color'
+                              ? 'bg-white text-slate-900 shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Configure by Color
+                        </button>
                       </div>
 
-                      <div className="flex flex-wrap gap-1.5 items-center">
-                        {availableColorAttributes.map((attr) => {
-                          const isSelected = selectedColorTags.includes(attr.name);
-                          return (
-                            <button
-                              key={attr.name}
-                              type="button"
-                              onClick={() => handleToggleColor(attr.name)}
-                              className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-                                isSelected
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                              }`}
-                            >
-                              <span
-                                className="w-3 h-3 rounded-full border border-black/10 flex-shrink-0"
-                                style={{ backgroundColor: attr.value || '#0a0a0a' }}
-                              />
-                              <span>{attr.name}</span>
-                              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                            </button>
-                          );
-                        })}
-
-                        {/* Quick custom color add */}
-                        <div className="flex items-center space-x-1 bg-white border border-slate-200 rounded-lg px-2 py-0.5">
-                          <input
-                            type="text"
-                            value={customColorInput}
-                            onChange={(e) => setCustomColorInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleAddCustomColor();
-                              }
-                            }}
-                            placeholder="+ Add Color..."
-                            className="w-20 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none"
-                          />
+                      {/* Quick Bulk Helpers */}
+                      <div className="flex items-center space-x-2 text-xs">
+                        {variantConfigMode === 'by-size' ? (
                           <button
                             type="button"
-                            onClick={handleAddCustomColor}
-                            className="text-xs font-bold text-blue-600 hover:text-blue-700"
+                            onClick={handleAddAllColorsToCurrentSize}
+                            className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold rounded-lg transition-all cursor-pointer"
+                            title="Add all colors to active size"
                           >
-                            Add
+                            + All Colors to {activeConfigSize}
                           </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleAddAllSizesToCurrentColor}
+                            className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold rounded-lg transition-all cursor-pointer"
+                            title="Add all sizes to active color"
+                          >
+                            + All Sizes (S, M, L, XL)
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleGenerateVariantMatrix}
+                          className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-semibold rounded-lg transition-all cursor-pointer"
+                        >
+                          ⚡ Auto-Fill Matrix
+                        </button>
+                        {formData.variants.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleClearAllVariants}
+                            className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-semibold rounded-lg transition-all cursor-pointer"
+                          >
+                            Clear All
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* VIEW 1: CONFIGURE BY SIZE (Size First, Color Second) */}
+                    {variantConfigMode === 'by-size' && (
+                      <div className="space-y-3.5">
+                        {/* 1. Size Tabs */}
+                        <div>
+                          <div className="flex items-center justify-between text-xs mb-1.5">
+                            <span className="font-bold text-slate-800">
+                              1. Select Size to Configure:
+                            </span>
+                            <span className="text-[11px] text-slate-500">
+                              Switch sizes to configure colors independently without losing previous sizes
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5">
+                            {STANDARD_SIZES.map((size) => {
+                              const isActive = activeConfigSize === size;
+                              const assignedColorCount = formData.variants.filter(
+                                (v) => (v.size || '').toUpperCase() === size.toUpperCase()
+                              ).length;
+
+                              return (
+                                <button
+                                  key={size}
+                                  type="button"
+                                  onClick={() => setActiveConfigSize(size)}
+                                  className={`relative min-w-[54px] px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer flex items-center justify-center space-x-1.5 ${
+                                    isActive
+                                      ? 'bg-slate-900 text-white border-slate-900 ring-2 ring-blue-500 shadow-xs'
+                                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <span>{size}</span>
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-sans font-semibold ${
+                                      assignedColorCount > 0
+                                        ? isActive
+                                          ? 'bg-blue-500 text-white'
+                                          : 'bg-blue-100 text-blue-800 font-bold'
+                                        : 'bg-slate-100 text-slate-400'
+                                    }`}
+                                  >
+                                    {assignedColorCount}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    </div>
 
-                    {/* Sizes Multi-Select */}
-                    <div className="space-y-1.5 pt-2 border-t border-slate-200/60">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-800">
-                          Select Sizes for Variants ({selectedSizeTags.length}):
-                        </span>
-                        <span className="text-[11px] text-slate-500">
-                          Click to select multiple sizes
-                        </span>
-                      </div>
+                        {/* 2. Colors for activeConfigSize */}
+                        <div className="pt-3 border-t border-slate-200/60">
+                          <div className="flex items-center justify-between text-xs mb-1.5">
+                            <span className="font-bold text-slate-800">
+                              2. Colors Available in Size <span className="text-blue-600 font-black font-mono">[{activeConfigSize}]</span>:
+                            </span>
+                            <span className="text-[11px] text-slate-500">
+                              Click any color to toggle on/off for Size {activeConfigSize}
+                            </span>
+                          </div>
 
-                      <div className="flex flex-wrap gap-1.5">
-                        {STANDARD_SIZES.map((size) => {
-                          const isSelected = selectedSizeTags.includes(size);
-                          return (
-                            <button
-                              key={size}
-                              type="button"
-                              onClick={() => handleToggleSize(size)}
-                              className={`min-w-[40px] px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer ${
-                                isSelected
-                                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                              }`}
-                            >
-                              {size}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
+                          <div className="flex flex-wrap gap-1.5 items-center">
+                            {availableColorAttributes.map((attr) => {
+                              const isColorActiveForThisSize = formData.variants.some(
+                                (v) =>
+                                  (v.size || '').toUpperCase() === activeConfigSize.toUpperCase() &&
+                                  (v.color || '').toLowerCase() === attr.name.toLowerCase()
+                              );
 
-                  {/* Step B: Interactive Variants Matrix Table */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm animate-in fade-in duration-200">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                        <tr>
-                          <th className="py-2.5 px-3">Size</th>
-                          <th className="py-2.5 px-3">Color / Swatch</th>
-                          <th className="py-2.5 px-3">Price (₹)</th>
-                          <th className="py-2.5 px-3">Stock Units</th>
-                          <th className="py-2.5 px-3 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200/60 bg-white">
-                        {formData.variants.map((v, i) => (
-                          <tr key={i} className="hover:bg-blue-50/20">
-                            {/* Size */}
-                            <td className="py-2 px-3">
+                              return (
+                                <button
+                                  key={attr.name}
+                                  type="button"
+                                  onClick={() => handleToggleColorForSize(activeConfigSize, attr.name)}
+                                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                                    isColorActiveForThisSize
+                                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-1 ring-blue-500'
+                                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <span
+                                    className="w-3.5 h-3.5 rounded-full border border-black/15 flex-shrink-0"
+                                    style={{ backgroundColor: attr.value || '#0a0a0a' }}
+                                  />
+                                  <span>{attr.name}</span>
+                                  {isColorActiveForThisSize ? (
+                                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                  ) : (
+                                    <Plus className="w-3 h-3 text-slate-400" />
+                                  )}
+                                </button>
+                              );
+                            })}
+
+                            {/* Add Custom Color input */}
+                            <div className="flex items-center space-x-1 bg-white border border-slate-200 rounded-lg px-2 py-1">
                               <input
                                 type="text"
-                                value={v.size}
-                                onChange={(e) => handleVariantChange(i, 'size', e.target.value.toUpperCase())}
-                                className="w-16 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-center font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500 font-mono"
+                                value={customColorInput}
+                                onChange={(e) => setCustomColorInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddCustomColor();
+                                  }
+                                }}
+                                placeholder="+ Custom Color..."
+                                className="w-24 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none"
                               />
-                            </td>
+                              <button
+                                type="button"
+                                onClick={handleAddCustomColor}
+                                className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+                              >
+                                Add
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-                            {/* Color */}
-                            <td className="py-2 px-3">
-                              <div className="flex items-center space-x-1.5">
+                    {/* VIEW 2: CONFIGURE BY COLOR (Color First, Size Second) */}
+                    {variantConfigMode === 'by-color' && (
+                      <div className="space-y-3.5">
+                        {/* 1. Color Tabs */}
+                        <div>
+                          <div className="flex items-center justify-between text-xs mb-1.5">
+                            <span className="font-bold text-slate-800">
+                              1. Select Color to Configure:
+                            </span>
+                            <span className="text-[11px] text-slate-500">
+                              Click any color to see & assign its individual sizes
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5 items-center">
+                            {availableColorAttributes.map((attr) => {
+                              const isActive = activeConfigColor.toLowerCase() === attr.name.toLowerCase();
+                              const assignedSizeCount = formData.variants.filter(
+                                (v) => (v.color || '').toLowerCase() === attr.name.toLowerCase()
+                              ).length;
+
+                              return (
+                                <button
+                                  key={attr.name}
+                                  type="button"
+                                  onClick={() => setActiveConfigColor(attr.name)}
+                                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                                    isActive
+                                      ? 'bg-slate-900 text-white border-slate-900 ring-2 ring-blue-500 shadow-xs'
+                                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <span
+                                    className="w-3.5 h-3.5 rounded-full border border-black/15 flex-shrink-0"
+                                    style={{ backgroundColor: attr.value || '#0a0a0a' }}
+                                  />
+                                  <span>{attr.name}</span>
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-semibold ${
+                                      assignedSizeCount > 0
+                                        ? isActive
+                                          ? 'bg-blue-500 text-white'
+                                          : 'bg-blue-100 text-blue-800 font-bold'
+                                        : 'bg-slate-100 text-slate-400'
+                                    }`}
+                                  >
+                                    {assignedSizeCount}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* 2. Sizes Available for activeConfigColor */}
+                        <div className="pt-3 border-t border-slate-200/60">
+                          <div className="flex items-center justify-between text-xs mb-1.5">
+                            <span className="font-bold text-slate-800">
+                              2. Sizes Available in Color <span className="text-blue-600 font-black">[{activeConfigColor}]</span>:
+                            </span>
+                            <span className="text-[11px] text-slate-500">
+                              Click size to toggle on/off for {activeConfigColor}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5">
+                            {STANDARD_SIZES.map((size) => {
+                              const isSizeActiveForThisColor = formData.variants.some(
+                                (v) =>
+                                  (v.color || '').toLowerCase() === activeConfigColor.toLowerCase() &&
+                                  (v.size || '').toUpperCase() === size.toUpperCase()
+                              );
+
+                              return (
+                                <button
+                                  key={size}
+                                  type="button"
+                                  onClick={() => handleToggleSizeForColor(activeConfigColor, size)}
+                                  className={`min-w-[48px] px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer flex items-center justify-center space-x-1 ${
+                                    isSizeActiveForThisColor
+                                      ? 'bg-slate-900 text-white border-slate-900 shadow-xs ring-1 ring-blue-500'
+                                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <span>{size}</span>
+                                  {isSizeActiveForThisColor && <Check className="w-3 h-3 stroke-[3]" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Step B: Interactive Variants Table */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm animate-in fade-in duration-200">
+                    <div className="px-4 py-2.5 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800">
+                        Active Variant Combinations ({formData.variants.length})
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-mono">
+                        Total Stock: {formData.variants.reduce((acc, curr) => acc + (Number(curr.stock) || 0), 0)} units
+                      </span>
+                    </div>
+
+                    {formData.variants.length === 0 ? (
+                      <div className="p-8 text-center text-xs text-slate-400">
+                        No variant combinations added yet. Click on any size and color above to add combinations!
+                      </div>
+                    ) : (
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100/60 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                          <tr>
+                            <th className="py-2.5 px-3">Size</th>
+                            <th className="py-2.5 px-3">Color / Swatch</th>
+                            <th className="py-2.5 px-3">Price (₹)</th>
+                            <th className="py-2.5 px-3">Stock Units</th>
+                            <th className="py-2.5 px-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200/60 bg-white">
+                          {formData.variants.map((v, i) => (
+                            <tr key={i} className="hover:bg-blue-50/20">
+                              {/* Size */}
+                              <td className="py-2 px-3">
                                 <input
                                   type="text"
-                                  value={v.color}
-                                  placeholder="e.g. Pitch Black"
-                                  list={`color-options-${i}`}
-                                  onChange={(e) => handleVariantChange(i, 'color', e.target.value)}
-                                  className="w-32 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 outline-none focus:bg-white focus:border-blue-500 font-semibold"
+                                  value={v.size}
+                                  onChange={(e) => handleVariantChange(i, 'size', e.target.value.toUpperCase())}
+                                  className="w-16 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-center font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500 font-mono"
                                 />
-                                <datalist id={`color-options-${i}`}>
-                                  {selectedColorTags.map((c) => (
-                                    <option key={c} value={c} />
-                                  ))}
-                                  {availableColorAttributes.map((a) => (
-                                    <option key={a.name} value={a.name} />
-                                  ))}
-                                </datalist>
-                              </div>
-                            </td>
+                              </td>
 
-                          {/* Price for this Size */}
-                          <td className="py-2 px-3">
-                            <div className="relative flex items-center w-28">
-                              <span className="absolute left-2 text-slate-400 font-bold">₹</span>
-                              <input
-                                type="number"
-                                value={v.price}
-                                placeholder={formData.price || '1899'}
-                                onChange={(e) => handleVariantChange(i, 'price', e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-6 pr-2 py-1.5 font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500"
-                              />
-                            </div>
-                          </td>
+                              {/* Color */}
+                              <td className="py-2 px-3">
+                                <div className="flex items-center space-x-1.5">
+                                  <input
+                                    type="text"
+                                    value={v.color}
+                                    placeholder="e.g. Pitch Black"
+                                    list={`color-options-${i}`}
+                                    onChange={(e) => handleVariantChange(i, 'color', e.target.value)}
+                                    className="w-36 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 outline-none focus:bg-white focus:border-blue-500 font-semibold"
+                                  />
+                                  <datalist id={`color-options-${i}`}>
+                                    {availableColorAttributes.map((a) => (
+                                      <option key={a.name} value={a.name} />
+                                    ))}
+                                  </datalist>
+                                </div>
+                              </td>
 
-                          {/* Stock for this Size */}
-                          <td className="py-2 px-3">
-                            <input
-                              type="number"
-                              value={v.stock}
-                              min={0}
-                              onChange={(e) => handleVariantChange(i, 'stock', Number(e.target.value))}
-                              className="w-24 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500"
-                            />
-                          </td>
+                              {/* Price for this Size */}
+                              <td className="py-2 px-3">
+                                <div className="relative flex items-center w-28">
+                                  <span className="absolute left-2 text-slate-400 font-bold">₹</span>
+                                  <input
+                                    type="number"
+                                    value={v.price}
+                                    placeholder={formData.price || '1899'}
+                                    onChange={(e) => handleVariantChange(i, 'price', e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-6 pr-2 py-1.5 font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500"
+                                  />
+                                </div>
+                              </td>
 
-                          {/* Remove */}
-                          <td className="py-2 px-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveVariantRow(i)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
-                              title="Delete variant"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                              {/* Stock for this Size */}
+                              <td className="py-2 px-3">
+                                <input
+                                  type="number"
+                                  value={v.stock}
+                                  min={0}
+                                  onChange={(e) => handleVariantChange(i, 'stock', Number(e.target.value))}
+                                  className="w-24 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500"
+                                />
+                              </td>
+
+                              {/* Remove */}
+                              <td className="py-2 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveVariantRow(i)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                  title="Delete variant"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
             {/* Status & Placement Curation Flags (All 4 Flags) */}
             <div className="pt-5 border-t border-slate-200 space-y-3">
