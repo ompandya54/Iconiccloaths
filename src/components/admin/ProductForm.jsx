@@ -13,7 +13,8 @@ import {
   Sparkles,
   Tag,
   DollarSign,
-  Package
+  Package,
+  Loader2,
 } from 'lucide-react';
 import ImageCropModal from './ImageCropModal';
 import { uploadImageFile } from '@/app/api/uploadapi';
@@ -80,22 +81,24 @@ export default function ProductForm({
   const [collections, setCollections] = useState(DEFAULT_COLLECTIONS);
   const [badges, setBadges] = useState(DEFAULT_BADGES);
 
-  // Available Color Attributes from MongoDB
+  // Available Color Attributes (Default to 2: Pitch Black and Pure White)
   const [availableColorAttributes, setAvailableColorAttributes] = useState([
     { name: 'Pitch Black', value: '#0a0a0c' },
     { name: 'Pure White', value: '#ffffff' },
-    { name: 'Vintage Charcoal', value: '#24252a' },
-    { name: 'Acid Grey', value: '#4a4b52' },
-    { name: 'Slate Blue', value: '#25344d' },
   ]);
 
-  // Active Colorways for Pattern B (Colorway Cards)
+  // Active Colorways for Pattern B (Colorway Cards with dedicated image & live hex)
   const [activeColorways, setActiveColorways] = useState([
-    { name: 'Pitch Black', hex: '#0a0a0c' },
+    { name: 'Pitch Black', hex: '#0a0a0c', image: '' },
+    { name: 'Pure White', hex: '#ffffff', image: '' },
   ]);
 
-  // Custom Color Input in admin
+  // Loading state for dedicated colorway image upload
+  const [uploadingColorway, setUploadingColorway] = useState('');
+
+  // Custom Color Input & Hex in admin
   const [customColorInput, setCustomColorInput] = useState('');
+  const [customColorHex, setCustomColorHex] = useState('#0a0a0c');
 
   // Quick Inline Add Modal / Prompt State
   const [quickAddModal, setQuickAddModal] = useState({ open: false, field: '', title: '', value: '' });
@@ -116,7 +119,24 @@ export default function ProductForm({
           if (liveThemes.length > 0) setThemes((prev) => [...new Set([...liveThemes, ...prev])]);
           if (liveBadges.length > 0) setBadges((prev) => [...new Set([...liveBadges, ...prev])]);
           if (liveCollections.length > 0) setCollections((prev) => [...new Set([...liveCollections, ...prev])]);
-          if (liveColors.length > 0) setAvailableColorAttributes(liveColors);
+
+          // Keep Pitch Black & Pure White as default 2, plus any user-created custom colors
+          if (liveColors.length > 0) {
+            const baseColors = [
+              { name: 'Pitch Black', value: '#0a0a0c' },
+              { name: 'Pure White', value: '#ffffff' },
+            ];
+            const customOnly = liveColors.filter(
+              (c) => !['vintage charcoal', 'acid grey', 'slate blue'].includes((c.name || '').toLowerCase())
+            );
+            const merged = [...baseColors];
+            customOnly.forEach((c) => {
+              if (!merged.some((m) => m.name.toLowerCase() === c.name?.toLowerCase())) {
+                merged.push({ name: c.name, value: c.value || '#0a0a0c' });
+              }
+            });
+            setAvailableColorAttributes(merged);
+          }
         }
       } catch (err) {
         console.warn('Could not load live attributes, using defaults', err);
@@ -142,10 +162,14 @@ export default function ProductForm({
     images: [],
     hasVariants: false,
     variants: [
-      { size: 'S', color: 'Default', price: '', stock: 20 },
-      { size: 'M', color: 'Default', price: '', stock: 30 },
-      { size: 'L', color: 'Default', price: '', stock: 25 },
-      { size: 'XL', color: 'Default', price: '', stock: 15 },
+      { size: 'S', color: 'Pitch Black', price: '', stock: 25 },
+      { size: 'M', color: 'Pitch Black', price: '', stock: 25 },
+      { size: 'L', color: 'Pitch Black', price: '', stock: 25 },
+      { size: 'XL', color: 'Pitch Black', price: '', stock: 25 },
+      { size: 'S', color: 'Pure White', price: '', stock: 25 },
+      { size: 'M', color: 'Pure White', price: '', stock: 25 },
+      { size: 'L', color: 'Pure White', price: '', stock: 25 },
+      { size: 'XL', color: 'Pure White', price: '', stock: 25 },
     ],
     isActive: true,
     isBestseller: false,
@@ -233,8 +257,8 @@ export default function ProductForm({
             const matchProdColor = productColors.find((c) => c.name?.toLowerCase() === cName?.toLowerCase());
             return {
               name: cName,
-              hex: matchTaxonomy?.value || matchProdColor?.hex || (cName.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0a'),
-              image: matchProdColor?.image || product.image || '',
+              hex: matchProdColor?.hex || matchTaxonomy?.value || (cName.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c'),
+              image: matchProdColor?.image || '',
             };
           });
           setActiveColorways(loadedColorways);
@@ -243,7 +267,8 @@ export default function ProductForm({
             const map = new Map(prev.map((a) => [a.name.toLowerCase(), a]));
             allColorsList.forEach((c) => {
               if (!map.has(c.toLowerCase())) {
-                map.set(c.toLowerCase(), { name: c, value: '#0a0a0a' });
+                const matchProdColor = productColors.find((pc) => pc.name?.toLowerCase() === c.toLowerCase());
+                map.set(c.toLowerCase(), { name: c, value: matchProdColor?.hex || '#0a0a0c' });
               }
             });
             return Array.from(map.values());
@@ -252,8 +277,8 @@ export default function ProductForm({
       } else if (Array.isArray(product.colors) && product.colors.length > 0) {
         const productColors = product.colors.map((c) =>
           typeof c === 'string'
-            ? { name: c, hex: c.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0a' }
-            : { name: c.name, hex: c.hex || '#0a0a0a', image: c.image }
+            ? { name: c, hex: c.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c', image: '' }
+            : { name: c.name, hex: c.hex || (c.name.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c'), image: c.image || '' }
         );
         setActiveColorways(productColors);
       }
@@ -366,7 +391,7 @@ export default function ProductForm({
   // ========================================================
 
   // 1. Add a Colorway card (pre-populates standard S, M, L, XL with base price & stock)
-  const handleAddColorway = (colorName) => {
+  const handleAddColorway = (colorName, customHex = '') => {
     const trimmed = (colorName || customColorInput).trim();
     if (!trimmed) return;
 
@@ -378,9 +403,9 @@ export default function ProductForm({
     const matchAttr = availableColorAttributes.find(
       (a) => a.name.toLowerCase() === trimmed.toLowerCase()
     );
-    const hex = matchAttr?.value || (trimmed.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0a');
+    const hex = customHex || matchAttr?.value || (trimmed.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c');
 
-    const newColorway = { name: trimmed, hex };
+    const newColorway = { name: trimmed, hex, image: '' };
     setActiveColorways((prev) => [...prev, newColorway]);
 
     if (!availableColorAttributes.some((a) => a.name.toLowerCase() === trimmed.toLowerCase())) {
@@ -404,6 +429,73 @@ export default function ProductForm({
     }));
 
     setCustomColorInput('');
+    setCustomColorHex('#0a0a0c');
+  };
+
+  // Dedicated Colorway Image Upload Handler
+  const handleColorwayImageUpload = async (colorName, file) => {
+    if (!file) return;
+    setUploadingColorway(colorName);
+    try {
+      const sanitized = colorName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      const res = await uploadImageFile(file, `colorway-${sanitized}.webp`);
+      const uploadedUrl = res?.url || res?.data?.url || res?.secure_url;
+      if (uploadedUrl) {
+        setActiveColorways((prev) =>
+          prev.map((cw) =>
+            cw.name.toLowerCase() === colorName.toLowerCase()
+              ? { ...cw, image: uploadedUrl }
+              : cw
+          )
+        );
+        // Also ensure image is stored in formData images gallery
+        setFormData((prev) => ({
+          ...prev,
+          image: prev.image || uploadedUrl,
+          images: prev.images.includes(uploadedUrl) ? prev.images : [...prev.images, uploadedUrl],
+        }));
+      } else {
+        alert(res?.message || 'Failed to upload image for colorway');
+      }
+    } catch (err) {
+      console.error('Colorway image upload error:', err);
+      alert('Network error while uploading colorway image');
+    } finally {
+      setUploadingColorway('');
+    }
+  };
+
+  // Remove Colorway Image Handler
+  const handleRemoveColorwayImage = (colorName) => {
+    setActiveColorways((prev) =>
+      prev.map((cw) =>
+        cw.name.toLowerCase() === colorName.toLowerCase()
+          ? { ...cw, image: '' }
+          : cw
+      )
+    );
+  };
+
+  // Update Colorway HEX code live (dynamic swatch & attribute sync)
+  const handleUpdateColorwayHex = (colorName, newHex) => {
+    let cleanHex = newHex.trim();
+    if (cleanHex && !cleanHex.startsWith('#')) {
+      cleanHex = `#${cleanHex}`;
+    }
+    setActiveColorways((prev) =>
+      prev.map((cw) =>
+        cw.name.toLowerCase() === colorName.toLowerCase()
+          ? { ...cw, hex: cleanHex }
+          : cw
+      )
+    );
+    setAvailableColorAttributes((prev) =>
+      prev.map((a) =>
+        a.name.toLowerCase() === colorName.toLowerCase()
+          ? { ...a, value: cleanHex }
+          : a
+      )
+    );
   };
 
   // 2. Remove an entire Colorway card and all its sizes
@@ -616,19 +708,34 @@ export default function ProductForm({
     // Extract unique colors from variants
     const uniqueColorsFromVariants = formData.hasVariants && formData.variants.length > 0
       ? [...new Set(formData.variants.map((v) => v.color).filter(Boolean))]
-      : (availableColorAttributes.length > 0 ? [availableColorAttributes[0].name] : ['Pitch Black']);
+      : (activeColorways.length > 0 ? activeColorways.map((cw) => cw.name) : ['Pitch Black']);
 
-    // Build payload.colors array with hex codes from taxonomy
-    const payloadColors = uniqueColorsFromVariants.map((cName) => {
-      const matchAttr = availableColorAttributes.find(
-        (a) => a.name?.toLowerCase() === cName?.toLowerCase()
-      );
-      return {
-        name: cName,
-        hex: matchAttr?.value || (cName.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0a'),
-        image: primaryImg,
-      };
-    });
+    // Build payload.colors array with dedicated colorway images & hex codes
+    const payloadColors = (formData.hasVariants && activeColorways.length > 0)
+      ? activeColorways
+          .filter((cw) => uniqueColorsFromVariants.some((c) => c.toLowerCase() === cw.name.toLowerCase()))
+          .map((cw) => ({
+            name: cw.name,
+            hex: cw.hex || (cw.name.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c'),
+            image: cw.image || primaryImg,
+          }))
+      : uniqueColorsFromVariants.map((cName) => {
+          const matchCw = activeColorways.find((cw) => cw.name.toLowerCase() === cName.toLowerCase());
+          const matchAttr = availableColorAttributes.find((a) => a.name?.toLowerCase() === cName?.toLowerCase());
+          return {
+            name: cName,
+            hex: matchCw?.hex || matchAttr?.value || (cName.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c'),
+            image: matchCw?.image || primaryImg,
+          };
+        });
+
+    const finalColors = payloadColors.length > 0
+      ? payloadColors
+      : activeColorways.map((cw) => ({
+          name: cw.name,
+          hex: cw.hex || '#0a0a0c',
+          image: cw.image || primaryImg,
+        }));
 
     const payload = {
       name: formData.name.trim(),
@@ -647,7 +754,7 @@ export default function ProductForm({
       description: formData.description.trim(),
       image: primaryImg,
       images: allImages,
-      colors: payloadColors,
+      colors: finalColors.length > 0 ? finalColors : [{ name: 'Pitch Black', hex: '#0a0a0c', image: primaryImg }],
       sizes: availableSizes,
       hasVariants: formData.hasVariants,
       variants: formData.hasVariants
@@ -1180,15 +1287,23 @@ export default function ProductForm({
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
-                              handleAddColorway(customColorInput);
+                              handleAddColorway(customColorInput, customColorHex);
                             }
                           }}
                           placeholder="Type custom color..."
                           className="w-32 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none"
                         />
+                        <div className="relative w-5 h-5 rounded-full overflow-hidden border border-slate-300 flex-shrink-0 cursor-pointer" title="Pick custom color">
+                          <input
+                            type="color"
+                            value={customColorHex}
+                            onChange={(e) => setCustomColorHex(e.target.value)}
+                            className="absolute -top-2 -left-2 w-9 h-9 cursor-pointer"
+                          />
+                        </div>
                         <button
                           type="button"
-                          onClick={() => handleAddColorway(customColorInput)}
+                          onClick={() => handleAddColorway(customColorInput, customColorHex)}
                           className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded transition-colors cursor-pointer"
                         >
                           Add
@@ -1227,21 +1342,119 @@ export default function ProductForm({
                             className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden transition-all duration-200 hover:border-slate-300"
                           >
                             {/* Card Header */}
-                            <div className="bg-slate-50/80 px-4 sm:px-5 py-3 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                              <div className="flex items-center space-x-2.5">
-                                <span
-                                  className="w-4 h-4 rounded-full border border-black/20 shadow-xs flex-shrink-0"
-                                  style={{ backgroundColor: cw.hex || '#0a0a0a' }}
-                                />
-                                <span className="font-bold text-slate-900 text-sm tracking-tight">
+                            <div className="bg-slate-50/90 px-4 sm:px-5 py-3 border-b border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                              <div className="flex flex-wrap items-center gap-3">
+                                
+                                {/* Dedicated Colorway Image Upload & Preview */}
+                                <div className="relative flex-shrink-0">
+                                  <input
+                                    type="file"
+                                    id={`file-colorway-${cw.name.replace(/\s+/g, '-')}`}
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      if (e.target.files?.[0]) {
+                                        handleColorwayImageUpload(cw.name, e.target.files[0]);
+                                        e.target.value = '';
+                                      }
+                                    }}
+                                    className="hidden"
+                                  />
+                                  {cw.image ? (
+                                    <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200 shadow-2xs group/img bg-slate-100">
+                                      <img
+                                        src={cw.image}
+                                        alt={cw.name}
+                                        className="w-full h-full object-cover"
+                                      />
+                                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                                        <label
+                                          htmlFor={`file-colorway-${cw.name.replace(/\s+/g, '-')}`}
+                                          className="p-1 text-white hover:text-blue-300 cursor-pointer"
+                                          title="Change photo"
+                                        >
+                                          <Upload className="w-3.5 h-3.5" />
+                                        </label>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveColorwayImage(cw.name)}
+                                          className="p-1 text-white hover:text-rose-400 cursor-pointer"
+                                          title="Remove photo"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <label
+                                      htmlFor={`file-colorway-${cw.name.replace(/\s+/g, '-')}`}
+                                      className={`w-11 h-11 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-500 bg-white hover:bg-blue-50/50 flex flex-col items-center justify-center cursor-pointer transition-all shadow-2xs ${
+                                        uploadingColorway === cw.name ? 'pointer-events-none opacity-60' : ''
+                                      }`}
+                                      title="Upload dedicated photo for this colorway"
+                                    >
+                                      {uploadingColorway === cw.name ? (
+                                        <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                                      ) : (
+                                        <>
+                                          <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
+                                          <span className="text-[9px] font-bold text-slate-500 mt-0.5 leading-none">
+                                            + Photo
+                                          </span>
+                                        </>
+                                      )}
+                                    </label>
+                                  )}
+                                </div>
+
+                                {/* Color Swatch Circle (Click to pick visually) */}
+                                <div className="relative flex items-center">
+                                  <input
+                                    type="color"
+                                    id={`color-picker-${cw.name.replace(/\s+/g, '-')}`}
+                                    value={cw.hex && cw.hex.startsWith('#') && cw.hex.length === 7 ? cw.hex : (cw.name.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0c')}
+                                    onChange={(e) => handleUpdateColorwayHex(cw.name, e.target.value)}
+                                    className="absolute inset-0 opacity-0 w-6 h-6 cursor-pointer"
+                                    title="Click to visually pick color"
+                                  />
+                                  <span
+                                    className="w-6 h-6 rounded-full border-2 border-white ring-1 ring-slate-300 shadow-xs cursor-pointer flex-shrink-0 transition-transform hover:scale-110"
+                                    style={{ backgroundColor: cw.hex || '#0a0a0c' }}
+                                    title="Click to choose color from palette"
+                                  />
+                                </div>
+
+                                {/* Colorway Name */}
+                                <span className="font-bold text-slate-900 text-sm tracking-tight whitespace-nowrap">
                                   {cw.name}
                                 </span>
-                                <span className="text-[10px] font-mono text-slate-400 bg-slate-200/60 px-1.5 py-0.5 rounded uppercase">
-                                  {cw.hex || '#0A0A0A'}
-                                </span>
-                                <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-full">
+
+                                {/* Editable HEX Code Input */}
+                                <div className="flex items-center bg-white border border-slate-200 hover:border-slate-300 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 rounded-lg px-2 py-0.5 shadow-2xs transition-all">
+                                  <span className="text-[11px] font-mono font-bold text-slate-400 mr-0.5">#</span>
+                                  <input
+                                    type="text"
+                                    value={(cw.hex || '#0a0a0c').replace(/^#/, '')}
+                                    onChange={(e) => {
+                                      const val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6);
+                                      handleUpdateColorwayHex(cw.name, `#${val}`);
+                                    }}
+                                    placeholder="0A0A0C"
+                                    maxLength={6}
+                                    className="w-16 text-[11px] font-mono font-bold text-slate-800 uppercase outline-none bg-transparent"
+                                    title="Type 6-character hex code (e.g. 0A0A0C, FFFFFF, 1E3A8A)"
+                                  />
+                                </div>
+
+                                {/* Active Sizes Badge */}
+                                <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-full whitespace-nowrap">
                                   {colorwayVariants.length} {colorwayVariants.length === 1 ? 'Size' : 'Sizes'} Active
                                 </span>
+
+                                {cw.image && (
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded-full flex items-center gap-1 whitespace-nowrap">
+                                    <Check className="w-3 h-3 stroke-[3]" /> Photo Added
+                                  </span>
+                                )}
                               </div>
 
                               {/* Card Actions */}
