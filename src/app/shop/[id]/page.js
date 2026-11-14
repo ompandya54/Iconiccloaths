@@ -203,21 +203,21 @@ export default function ProductDetailPage() {
         </div>
 
         {/* ======================================================== */}
-        {/* PRODUCT MAIN DETAIL GRID (RESTRAINED, NOT ZOOM-ZOOM)     */}
+        {/* PRODUCT MAIN DETAIL GRID (SLIMMER PROPORTIONAL GALLERY)  */}
         {/* ======================================================== */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start justify-center">
           
-          {/* Left Column: Image Gallery (Proportional & Compact) */}
-          <div className="lg:col-span-7 flex flex-col-reverse md:flex-row gap-3">
+          {/* Left Column: Image Gallery (Narrower 5-cols & max 410px width) */}
+          <div className="lg:col-span-5 flex flex-col-reverse md:flex-row gap-2.5 w-full max-w-[380px] sm:max-w-[410px] mx-auto lg:mx-0">
             
             {/* Thumbnails Column */}
             {images.length > 1 && (
-              <div className="flex md:flex-col gap-2.5 overflow-x-auto md:overflow-y-auto max-h-[500px] scrollbar-none flex-shrink-0">
+              <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-y-auto max-h-[460px] scrollbar-none flex-shrink-0">
                 {images.map((imgUrl, idx) => (
                   <button
                     key={idx}
                     onClick={() => setActiveImage(imgUrl)}
-                    className={`relative w-14 sm:w-16 aspect-[3/4] flex-shrink-0 bg-neutral-900 border overflow-hidden transition-all duration-200 cursor-pointer ${
+                    className={`relative w-12 sm:w-13 aspect-[3/4] flex-shrink-0 bg-neutral-900 border overflow-hidden transition-all duration-200 cursor-pointer ${
                       activeImage === imgUrl
                         ? 'border-white ring-1 ring-white'
                         : 'border-white/10 hover:border-white/40 opacity-70 hover:opacity-100'
@@ -234,8 +234,8 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {/* Main Stage Image Container (Proportional max-height) */}
-            <div className="relative flex-1 aspect-[3/4] max-h-[520px] bg-neutral-950 border border-white/10 overflow-hidden flex items-center justify-center group">
+            {/* Main Stage Image Container (Proportional max-height & restrained width) */}
+            <div className="relative flex-1 aspect-[3/4] max-h-[460px] sm:max-h-[480px] bg-neutral-950 border border-white/10 overflow-hidden flex items-center justify-center group">
               <img
                 src={activeImage || product.image || '/images/prod_minimal.jpg'}
                 alt={product.name}
@@ -267,8 +267,8 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {/* Right Column: Product Specs & Purchase Panel */}
-          <div className="lg:col-span-5 flex flex-col space-y-4">
+          {/* Right Column: Product Specs & Purchase Panel (Expanded 7-cols) */}
+          <div className="lg:col-span-7 flex flex-col space-y-4 max-w-xl">
             
             {/* Category & Title */}
             <div>
