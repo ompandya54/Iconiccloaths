@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import QuickViewModal from '@/components/QuickViewModal';
@@ -82,6 +82,54 @@ export default function ShopPage() {
     fetchApiProducts();
   }, []);
 
+  // Dynamic Colors computed from products & master streetwear palette
+  const availableColors = useMemo(() => {
+    const map = new Map();
+
+    // Standard Master Presets
+    const presets = [
+      { name: 'Pitch Black', hex: '#0a0a0c' },
+      { name: 'Pure White', hex: '#ffffff' },
+      { name: 'Vintage Charcoal', hex: '#27272a' },
+      { name: 'Acid Grey', hex: '#71717a' },
+      { name: 'Slate Blue', hex: '#334155' },
+      { name: 'Crimson Red', hex: '#dc2626' },
+      { name: 'Forest Green', hex: '#166534' },
+      { name: 'Sand Dune', hex: '#d6c7a1' },
+    ];
+    presets.forEach((p) => map.set(p.name.toLowerCase(), p));
+
+    // Also extract all distinct colors from loaded live products
+    products.forEach((prod) => {
+      if (Array.isArray(prod.colors)) {
+        prod.colors.forEach((c) => {
+          const name = typeof c === 'string' ? c : c?.name;
+          const hex = typeof c === 'object' && c?.hex ? c.hex : null;
+          if (name && name.toLowerCase() !== 'default') {
+            const key = name.toLowerCase().trim();
+            if (map.has(key)) {
+              if (hex) map.get(key).hex = hex;
+            } else {
+              map.set(key, { name, hex: hex || '#0a0a0c' });
+            }
+          }
+        });
+      }
+      if (Array.isArray(prod.variants)) {
+        prod.variants.forEach((v) => {
+          if (v.color && v.color.toLowerCase() !== 'default') {
+            const key = v.color.toLowerCase().trim();
+            if (!map.has(key)) {
+              map.set(key, { name: v.color, hex: '#0a0a0c' });
+            }
+          }
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [products]);
+
   // Filter & Sort Effect
   useEffect(() => {
     let result = [...products];
@@ -103,9 +151,20 @@ export default function ShopPage() {
       result = result.filter(p => p.sizes?.includes(selectedSize));
     }
 
-    // Color Filter
+    // Color Filter (Matches full color name or partial word, e.g. "Pitch Black" matches "black")
     if (selectedColor) {
-      result = result.filter(p => p.colors?.some(c => c.name.toLowerCase() === selectedColor.toLowerCase()));
+      const target = selectedColor.toLowerCase().trim();
+      result = result.filter((p) => {
+        const matchesColors = p.colors?.some((c) => {
+          const cName = (typeof c === 'string' ? c : c?.name || '').toLowerCase().trim();
+          return cName === target || cName.includes(target) || target.includes(cName);
+        });
+        const matchesVariants = p.variants?.some((v) => {
+          const vColor = (v.color || '').toLowerCase().trim();
+          return vColor === target || vColor.includes(target) || target.includes(vColor);
+        });
+        return matchesColors || matchesVariants;
+      });
     }
 
     // Price Filter
@@ -383,26 +442,48 @@ export default function ShopPage() {
                 </div>
 
                 {sectionsOpen.color && (
-                  <div className="flex items-center gap-3">
-                    {[
-                      { name: 'white', hex: '#ffffff' },
-                      { name: 'black', hex: '#0a0a0a' },
-                      { name: 'grey', hex: '#71717a' },
-                      { name: 'cream', hex: '#e5e0d8' },
-                      { name: 'sage', hex: '#4a5d4e' },
-                      { name: 'red', hex: '#8b0000' }
-                    ].map(clr => (
-                      <button
-                        key={clr.name}
-                        onClick={() => setSelectedColor(selectedColor === clr.name ? null : clr.name)}
-                        className={`w-6 h-6 rounded-full border border-neutral-700 flex items-center justify-center transition-all ${selectedColor === clr.name ? 'ring-2 ring-white ring-offset-2 ring-offset-black scale-110' : 'hover:scale-110'
-                          }`}
-                        style={{ backgroundColor: clr.hex }}
-                        title={clr.name}
-                      >
-                        {clr.name === 'white' && selectedColor === 'white' && <div className="w-1.5 h-1.5 rounded-full bg-black"></div>}
-                      </button>
-                    ))}
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2.5 mb-2">
+                      {availableColors.map((clr) => {
+                        const isSelected = selectedColor?.toLowerCase() === clr.name.toLowerCase();
+                        return (
+                          <button
+                            key={clr.name}
+                            type="button"
+                            onClick={() => setSelectedColor(isSelected ? null : clr.name)}
+                            className={`relative w-6 h-6 rounded-full border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'border-white ring-2 ring-white ring-offset-2 ring-offset-black scale-110 shadow-md'
+                                : 'border-neutral-700 hover:border-neutral-400 hover:scale-105'
+                            }`}
+                            style={{ backgroundColor: clr.hex || '#0a0a0a' }}
+                            title={clr.name}
+                          >
+                            {isSelected && (
+                              <Check
+                                className={`w-3 h-3 absolute inset-0 m-auto stroke-[3] ${
+                                  clr.hex?.toLowerCase() === '#ffffff' || clr.name.toLowerCase().includes('white')
+                                    ? 'text-black'
+                                    : 'text-white'
+                                }`}
+                              />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedColor && (
+                      <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-1">
+                        <span>Selected: <strong className="text-white capitalize">{selectedColor}</strong></span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedColor(null)}
+                          className="text-neutral-500 hover:text-white underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -682,14 +763,19 @@ export default function ShopPage() {
 
                         {/* Color Variant Dots */}
                         <div className="flex items-center gap-1.5">
-                          {prod.colors?.map((clr, idx) => (
-                            <span
-                              key={idx}
-                              className="w-2.5 h-2.5 rounded-full border border-neutral-700"
-                              style={{ backgroundColor: clr.hex }}
-                              title={clr.name}
-                            ></span>
-                          ))}
+                          {Array.isArray(prod.colors) &&
+                            prod.colors.map((clr, idx) => {
+                              const cHex = typeof clr === 'object' && clr?.hex ? clr.hex : '#0a0a0c';
+                              const cName = typeof clr === 'object' ? clr?.name : clr;
+                              return (
+                                <span
+                                  key={idx}
+                                  className="w-2.5 h-2.5 rounded-full border border-neutral-700"
+                                  style={{ backgroundColor: cHex }}
+                                  title={cName}
+                                />
+                              );
+                            })}
                         </div>
                       </div>
                     </div>

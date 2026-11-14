@@ -15,6 +15,7 @@ import {
   DollarSign,
   Package,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import ImageCropModal from './ImageCropModal';
 import { uploadImageFile } from '@/app/api/uploadapi';
@@ -66,6 +67,40 @@ const DEFAULT_BADGES = [
 
 const STANDARD_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
 
+// Smart color name to HEX mapping for standard fashion hues
+const COMMON_COLOR_MAP = {
+  black: '#0a0a0c',
+  'pitch black': '#0a0a0c',
+  white: '#ffffff',
+  'pure white': '#ffffff',
+  red: '#dc2626',
+  crimson: '#991b1b',
+  maroon: '#800000',
+  blue: '#2563eb',
+  navy: '#1e3a8a',
+  'royal blue': '#1d4ed8',
+  'sky blue': '#38bdf8',
+  green: '#16a34a',
+  'forest green': '#14532d',
+  olive: '#556b2f',
+  yellow: '#eab308',
+  mustard: '#ca8a04',
+  orange: '#ea580c',
+  rust: '#c2410c',
+  pink: '#ec4899',
+  purple: '#9333ea',
+  lavender: '#c084fc',
+  brown: '#78350f',
+  beige: '#d4b996',
+  tan: '#d2b48c',
+  cream: '#fffdd0',
+  grey: '#4b5563',
+  gray: '#4b5563',
+  charcoal: '#27272a',
+  'acid grey': '#4a4b52',
+  'slate blue': '#25344d',
+};
+
 export default function ProductForm({
   product = null,
   onSave,
@@ -81,10 +116,16 @@ export default function ProductForm({
   const [collections, setCollections] = useState(DEFAULT_COLLECTIONS);
   const [badges, setBadges] = useState(DEFAULT_BADGES);
 
-  // Available Color Attributes (Default to 2: Pitch Black and Pure White)
+  // Available Color Attributes (Master Streetwear Palette)
   const [availableColorAttributes, setAvailableColorAttributes] = useState([
     { name: 'Pitch Black', value: '#0a0a0c' },
     { name: 'Pure White', value: '#ffffff' },
+    { name: 'Vintage Charcoal', value: '#27272a' },
+    { name: 'Acid Grey', value: '#71717a' },
+    { name: 'Slate Blue', value: '#334155' },
+    { name: 'Crimson Red', value: '#dc2626' },
+    { name: 'Forest Green', value: '#166534' },
+    { name: 'Sand Dune', value: '#d6c7a1' },
   ]);
 
   // Active Colorways for Pattern B (Colorway Cards with dedicated image & live hex)
@@ -118,19 +159,26 @@ export default function ProductForm({
           if (liveBadges.length > 0) setBadges((prev) => [...new Set([...liveBadges, ...prev])]);
           if (liveCollections.length > 0) setCollections((prev) => [...new Set([...liveCollections, ...prev])]);
 
-          // Keep Pitch Black & Pure White as default 2, plus any user-created custom colors
+          // Load all Master Colors from MongoDB attributes
           if (liveColors.length > 0) {
-            const baseColors = [
+            const masterList = liveColors.map((c) => ({
+              name: c.name,
+              value: c.value || COMMON_COLOR_MAP[c.name?.toLowerCase()] || '#0a0a0c',
+            }));
+            const defaults = [
               { name: 'Pitch Black', value: '#0a0a0c' },
               { name: 'Pure White', value: '#ffffff' },
+              { name: 'Vintage Charcoal', value: '#27272a' },
+              { name: 'Acid Grey', value: '#71717a' },
+              { name: 'Slate Blue', value: '#334155' },
+              { name: 'Crimson Red', value: '#dc2626' },
+              { name: 'Forest Green', value: '#166534' },
+              { name: 'Sand Dune', value: '#d6c7a1' },
             ];
-            const customOnly = liveColors.filter(
-              (c) => !['vintage charcoal', 'acid grey', 'slate blue'].includes((c.name || '').toLowerCase())
-            );
-            const merged = [...baseColors];
-            customOnly.forEach((c) => {
-              if (!merged.some((m) => m.name.toLowerCase() === c.name?.toLowerCase())) {
-                merged.push({ name: c.name, value: c.value || '#0a0a0c' });
+            const merged = [...masterList];
+            defaults.forEach((d) => {
+              if (!merged.some((m) => m.name.toLowerCase() === d.name.toLowerCase())) {
+                merged.push(d);
               }
             });
             setAvailableColorAttributes(merged);
@@ -235,15 +283,17 @@ export default function ProductForm({
       if (Array.isArray(product.colors) && product.colors.length > 0) {
         const loadedColorways = product.colors.map((c) => {
           if (typeof c === 'string') {
+            const trimmedLower = c.trim().toLowerCase();
             return {
               name: c,
-              hex: '#000000',
+              hex: COMMON_COLOR_MAP[trimmedLower] || (trimmedLower.includes('white') ? '#ffffff' : '#0a0a0c'),
               image: '',
             };
           }
+          const cNameLower = (c.name || '').trim().toLowerCase();
           return {
             name: c.name || 'Default',
-            hex: c.hex ? (c.hex.startsWith('#') ? c.hex : `#${c.hex}`) : '#000000',
+            hex: c.hex ? (c.hex.startsWith('#') ? c.hex : `#${c.hex}`) : (COMMON_COLOR_MAP[cNameLower] || (cNameLower.includes('white') ? '#ffffff' : '#0a0a0c')),
             image: c.image || '',
           };
         });
@@ -254,9 +304,10 @@ export default function ProductForm({
           variantColors.forEach((vc) => {
             if (!loadedColorways.some((cw) => cw.name.toLowerCase() === vc.toLowerCase())) {
               const matchVariant = product.variants.find((v) => (v.color || '').toLowerCase() === vc.toLowerCase());
+              const vcLower = vc.trim().toLowerCase();
               loadedColorways.push({
                 name: vc,
-                hex: '#000000',
+                hex: COMMON_COLOR_MAP[vcLower] || (vcLower.includes('white') ? '#ffffff' : '#0a0a0c'),
                 image: matchVariant?.image || '',
               });
             }
@@ -269,7 +320,7 @@ export default function ProductForm({
         setAvailableColorAttributes((prev) => {
           const map = new Map(prev.map((a) => [a.name.toLowerCase(), a]));
           loadedColorways.forEach((cw) => {
-            map.set(cw.name.toLowerCase(), { name: cw.name, value: cw.hex || '#000000' });
+            map.set(cw.name.toLowerCase(), { name: cw.name, value: cw.hex || '#0a0a0c' });
           });
           return Array.from(map.values());
         });
@@ -278,9 +329,10 @@ export default function ProductForm({
         if (existColors.length > 0) {
           const loadedColorways = existColors.map((cName) => {
             const matchVariant = product.variants.find((v) => (v.color || '').toLowerCase() === cName.toLowerCase());
+            const cLower = cName.trim().toLowerCase();
             return {
               name: cName,
-              hex: '#000000',
+              hex: COMMON_COLOR_MAP[cLower] || (cLower.includes('white') ? '#ffffff' : '#0a0a0c'),
               image: matchVariant?.image || '',
             };
           });
@@ -405,16 +457,25 @@ export default function ProductForm({
       return;
     }
 
+    const trimmedLower = trimmed.toLowerCase();
     const matchAttr = availableColorAttributes.find(
-      (a) => a.name.toLowerCase() === trimmed.toLowerCase()
+      (a) => a.name.toLowerCase() === trimmedLower
     );
-    const hex = customHex || matchAttr?.value || (trimmed.toLowerCase().includes('white') ? '#ffffff' : '#000000');
+    const hex = customHex || matchAttr?.value || COMMON_COLOR_MAP[trimmedLower] || (trimmedLower.includes('white') ? '#ffffff' : '#0a0a0c');
 
     const newColorway = { name: trimmed, hex, image: '' };
     setActiveColorways((prev) => [...prev, newColorway]);
 
+    // If custom color not in master list, persist to MongoDB Attributes
     if (!availableColorAttributes.some((a) => a.name.toLowerCase() === trimmed.toLowerCase())) {
       setAvailableColorAttributes((prev) => [...prev, { name: trimmed, value: hex }]);
+      try {
+        createAttribute({ type: 'color', name: trimmed, value: hex }).catch((e) =>
+          console.warn('Auto-save color attribute warning:', e)
+        );
+      } catch (err) {
+        console.warn('Could not auto-persist custom color:', err);
+      }
     }
 
     // Default sizes for this colorway: S, M, L, XL
@@ -1244,16 +1305,37 @@ export default function ProductForm({
                       </div>
                     </div>
 
-                    {/* Add Colorway Selector Strip */}
-                    <div className="pt-3 border-t border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      <div className="flex items-center space-x-2 text-xs">
+                    {/* Add Colorway Selector Strip with Master Dropdown & Quick Chips */}
+                    <div className="pt-3 border-t border-slate-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
                         <span className="font-bold text-slate-700 whitespace-nowrap">+ Add Colorway:</span>
                         
-                        {/* Quick click pills for taxonomy colors not yet added */}
+                        {/* Master Colors Dropdown */}
+                        <div className="relative">
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value) handleAddColorway(e.target.value);
+                            }}
+                            className="bg-white border border-slate-200 text-slate-800 text-xs font-semibold rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:border-blue-400 cursor-pointer shadow-2xs appearance-none"
+                          >
+                            <option value="">▼ Master Colors List ({availableColorAttributes.length})</option>
+                            {availableColorAttributes
+                              .filter((a) => !activeColorways.some((cw) => cw.name.toLowerCase() === a.name.toLowerCase()))
+                              .map((attr) => (
+                                <option key={attr.name} value={attr.name}>
+                                  {attr.name} ({attr.value})
+                                </option>
+                              ))}
+                          </select>
+                          <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+
+                        {/* Quick click pills for popular unadded master colors */}
                         <div className="flex flex-wrap gap-1.5 items-center">
                           {availableColorAttributes
                             .filter((a) => !activeColorways.some((cw) => cw.name.toLowerCase() === a.name.toLowerCase()))
-                            .slice(0, 6)
+                            .slice(0, 5)
                             .map((attr) => (
                               <button
                                 key={attr.name}
@@ -1400,21 +1482,23 @@ export default function ProductForm({
                                 </div>
 
                                 {/* Color Swatch Circle (Click to pick visually) */}
-                                <div className="relative flex items-center">
+                                <label
+                                  htmlFor={`color-picker-${cw.name.replace(/\s+/g, '-')}`}
+                                  className="relative flex items-center cursor-pointer group/swatch"
+                                  title="Click circle to open color picker"
+                                >
                                   <input
                                     type="color"
                                     id={`color-picker-${cw.name.replace(/\s+/g, '-')}`}
                                     value={cw.hex && /^#[0-9A-Fa-f]{6}$/.test(cw.hex) ? cw.hex : '#000000'}
                                     onChange={(e) => handleUpdateColorwayHex(cw.name, e.target.value)}
-                                    className="absolute inset-0 opacity-0 w-6 h-6 cursor-pointer"
-                                    title="Click to visually pick color"
+                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-20"
                                   />
                                   <span
-                                    className="w-6 h-6 rounded-full border-2 border-white ring-1 ring-slate-300 shadow-xs cursor-pointer flex-shrink-0 transition-transform hover:scale-110"
+                                    className="w-6 h-6 rounded-full border-2 border-white ring-1 ring-slate-300 shadow-xs cursor-pointer flex-shrink-0 group-hover/swatch:scale-110 transition-transform pointer-events-none"
                                     style={{ backgroundColor: cw.hex && /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(cw.hex) ? cw.hex : '#000000' }}
-                                    title="Click to choose color from palette"
                                   />
-                                </div>
+                                </label>
 
                                 {/* Colorway Name */}
                                 <span className="font-bold text-slate-900 text-sm tracking-tight whitespace-nowrap">
@@ -1431,7 +1515,7 @@ export default function ProductForm({
                                       const val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6);
                                       handleUpdateColorwayHex(cw.name, val ? `#${val}` : '');
                                     }}
-                                    placeholder="000000"
+                                    placeholder="HEX"
                                     maxLength={6}
                                     className="w-16 text-[11px] font-mono font-bold text-slate-800 uppercase outline-none bg-transparent"
                                     title="Type 6-character hex code"
