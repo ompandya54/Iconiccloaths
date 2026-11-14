@@ -45,7 +45,7 @@ export default function SearchModal({
       />
 
       {/* Search Container */}
-      <div className="relative z-10 w-full max-w-2xl bg-[#121216] border border-white/15 rounded-2xl p-6 shadow-2xl">
+      <div data-lenis-prevent className="relative z-10 w-full max-w-2xl bg-[#121216] border border-white/15 rounded-2xl p-6 shadow-2xl">
         <div className="flex items-center space-x-3 pb-4 border-b border-white/10">
           <Search className="w-5 h-5 text-gray-400" />
           <input

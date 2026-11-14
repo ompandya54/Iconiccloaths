@@ -2,6 +2,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import StoreShell from "@/components/StoreShell";
+import SmoothScroll from "@/components/SmoothScroll";
 
 export const metadata = {
   title: "ICONIC CLOTHS | Premium Streetwear Redefined",
@@ -11,7 +12,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="dark scroll-smooth">
+    <html lang="en" className="dark">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -20,9 +21,11 @@ export default function RootLayout({ children }) {
       <body className="bg-[#08080a] text-white antialiased selection:bg-white selection:text-black">
         <AuthProvider>
           <CartProvider>
-            <StoreShell>
-              {children}
-            </StoreShell>
+            <SmoothScroll>
+              <StoreShell>
+                {children}
+              </StoreShell>
+            </SmoothScroll>
           </CartProvider>
         </AuthProvider>
       </body>

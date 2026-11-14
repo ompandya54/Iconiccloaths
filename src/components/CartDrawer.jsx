@@ -79,6 +79,7 @@ export default function CartDrawer({
 
       {/* Drawer Panel: Smooth Right-to-Left Slide In & Vice-Versa Slide Out */}
       <div
+        data-lenis-prevent
         className={`relative z-10 w-full max-w-md bg-[#0e0e12] border-l border-white/10 h-full flex flex-col justify-between shadow-2xl p-6 overflow-y-auto transform transition-transform duration-300 ease-in-out ${
           isAnimating ? 'translate-x-0' : 'translate-x-full'
         }`}

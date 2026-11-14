@@ -27,7 +27,7 @@ export default function QuickViewModal({ product, onClose, onAddToCart }) {
       />
 
       {/* Modal Dialog */}
-      <div className="relative z-10 w-full max-w-3xl bg-[#121216] border border-white/10 rounded-2xl overflow-hidden shadow-2xl grid grid-cols-1 md:grid-cols-2">
+      <div data-lenis-prevent className="relative z-10 w-full max-w-3xl bg-[#121216] border border-white/10 rounded-2xl overflow-hidden shadow-2xl grid grid-cols-1 md:grid-cols-2">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 z-20 p-2 text-gray-400 hover:text-white rounded-full bg-black/50"
