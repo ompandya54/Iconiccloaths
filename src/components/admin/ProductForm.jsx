@@ -80,6 +80,24 @@ export default function ProductForm({
   const [collections, setCollections] = useState(DEFAULT_COLLECTIONS);
   const [badges, setBadges] = useState(DEFAULT_BADGES);
 
+  // Available Color Attributes from MongoDB
+  const [availableColorAttributes, setAvailableColorAttributes] = useState([
+    { name: 'Pitch Black', value: '#0a0a0c' },
+    { name: 'Pure White', value: '#ffffff' },
+    { name: 'Vintage Charcoal', value: '#24252a' },
+    { name: 'Acid Grey', value: '#4a4b52' },
+    { name: 'Slate Blue', value: '#25344d' },
+  ]);
+
+  // Selected Colors for Variant Matrix (multi-select)
+  const [selectedColorTags, setSelectedColorTags] = useState(['Pitch Black']);
+
+  // Selected Sizes for Variant Matrix (multi-select)
+  const [selectedSizeTags, setSelectedSizeTags] = useState(['S', 'M', 'L', 'XL']);
+
+  // Custom Color Input in admin
+  const [customColorInput, setCustomColorInput] = useState('');
+
   // Quick Inline Add Modal / Prompt State
   const [quickAddModal, setQuickAddModal] = useState({ open: false, field: '', title: '', value: '' });
 
@@ -93,11 +111,13 @@ export default function ProductForm({
           const liveThemes = res.data.filter((a) => a.type === 'theme').map((a) => a.name);
           const liveBadges = res.data.filter((a) => a.type === 'badge').map((a) => a.name);
           const liveCollections = res.data.filter((a) => a.type === 'collection').map((a) => a.name);
+          const liveColors = res.data.filter((a) => a.type === 'color');
 
           if (liveFits.length > 0) setFits((prev) => [...new Set([...liveFits, ...prev])]);
           if (liveThemes.length > 0) setThemes((prev) => [...new Set([...liveThemes, ...prev])]);
           if (liveBadges.length > 0) setBadges((prev) => [...new Set([...liveBadges, ...prev])]);
           if (liveCollections.length > 0) setCollections((prev) => [...new Set([...liveCollections, ...prev])]);
+          if (liveColors.length > 0) setAvailableColorAttributes(liveColors);
         }
       } catch (err) {
         console.warn('Could not load live attributes, using defaults', err);
@@ -198,6 +218,22 @@ export default function ProductForm({
         isFeatured: Boolean(product.isFeatured),
         isNewArrival: product.isNewArrival !== false,
       });
+
+      // Populate selected colors & sizes from existing product
+      if (Array.isArray(product.variants) && product.variants.length > 0) {
+        const existColors = [...new Set(product.variants.map((v) => v.color).filter((c) => c && c !== 'Default'))];
+        const existSizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean))];
+        if (existColors.length > 0) setSelectedColorTags(existColors);
+        if (existSizes.length > 0) setSelectedSizeTags(existSizes);
+      } else {
+        if (Array.isArray(product.colors) && product.colors.length > 0) {
+          const cNames = product.colors.map((c) => (typeof c === 'string' ? c : c?.name)).filter(Boolean);
+          if (cNames.length > 0) setSelectedColorTags(cNames);
+        }
+        if (Array.isArray(product.sizes) && product.sizes.length > 0) {
+          setSelectedSizeTags(product.sizes);
+        }
+      }
     }
   }, [product]);
 
@@ -302,20 +338,60 @@ export default function ProductForm({
     }));
   };
 
-  const handleAutoGenerateSizes = () => {
-    const defaultPrices = formData.price || '1899';
+  const handleToggleColor = (colorName) => {
+    setSelectedColorTags((prev) =>
+      prev.includes(colorName)
+        ? (prev.length > 1 ? prev.filter((c) => c !== colorName) : prev)
+        : [...prev, colorName]
+    );
+  };
+
+  const handleAddCustomColor = () => {
+    const trimmed = customColorInput.trim();
+    if (!trimmed) return;
+    if (!selectedColorTags.includes(trimmed)) {
+      setSelectedColorTags((prev) => [...prev, trimmed]);
+    }
+    setCustomColorInput('');
+  };
+
+  const handleToggleSize = (sizeName) => {
+    setSelectedSizeTags((prev) =>
+      prev.includes(sizeName)
+        ? (prev.length > 1 ? prev.filter((s) => s !== sizeName) : prev)
+        : [...prev, sizeName]
+    );
+  };
+
+  const handleGenerateVariantMatrix = () => {
+    const basePrice = formData.price || '1899';
+    const colors = selectedColorTags.length > 0 ? selectedColorTags : ['Default'];
+    const sizes = selectedSizeTags.length > 0 ? selectedSizeTags : ['S', 'M', 'L', 'XL'];
+
+    const matrix = [];
+    colors.forEach((c) => {
+      sizes.forEach((s) => {
+        const existing = formData.variants.find(
+          (v) => v.size?.toUpperCase() === s.toUpperCase() && v.color?.toLowerCase() === c.toLowerCase()
+        );
+        matrix.push({
+          size: s.toUpperCase(),
+          color: c,
+          price: existing?.price ? String(existing.price) : basePrice,
+          stock: existing?.stock !== undefined ? existing.stock : 25,
+        });
+      });
+    });
+
     setFormData((prev) => ({
       ...prev,
       hasVariants: true,
-      variants: [
-        { size: 'XS', color: 'Default', price: defaultPrices, stock: 15 },
-        { size: 'S', color: 'Default', price: defaultPrices, stock: 25 },
-        { size: 'M', color: 'Default', price: defaultPrices, stock: 40 },
-        { size: 'L', color: 'Default', price: defaultPrices, stock: 35 },
-        { size: 'XL', color: 'Default', price: defaultPrices, stock: 20 },
-        { size: 'XXL', color: 'Default', price: defaultPrices, stock: 10 },
-      ],
+      variants: matrix,
     }));
+  };
+
+  const handleAutoGenerateSizes = () => {
+    handleGenerateVariantMatrix();
   };
 
   // Handle Quick Add Modal Save (saves to local state and persists to MongoDB)
@@ -390,6 +466,23 @@ export default function ProductForm({
       autoBadge = 'FEATURED';
     }
 
+    // Extract unique colors from variants or selected colors
+    const uniqueColorsFromVariants = formData.hasVariants && formData.variants.length > 0
+      ? [...new Set(formData.variants.map((v) => v.color).filter(Boolean))]
+      : (selectedColorTags.length > 0 ? selectedColorTags : ['Pitch Black']);
+
+    // Build payload.colors array with hex codes from taxonomy
+    const payloadColors = uniqueColorsFromVariants.map((cName) => {
+      const matchAttr = availableColorAttributes.find(
+        (a) => a.name?.toLowerCase() === cName?.toLowerCase()
+      );
+      return {
+        name: cName,
+        hex: matchAttr?.value || (cName.toLowerCase().includes('white') ? '#ffffff' : '#0a0a0a'),
+        image: primaryImg,
+      };
+    });
+
     const payload = {
       name: formData.name.trim(),
       slug: autoSlug, // Auto-generated silently
@@ -407,6 +500,7 @@ export default function ProductForm({
       description: formData.description.trim(),
       image: primaryImg,
       images: allImages,
+      colors: payloadColors,
       sizes: availableSizes,
       hasVariants: formData.hasVariants,
       variants: formData.hasVariants
@@ -415,7 +509,7 @@ export default function ProductForm({
             color: v.color || 'Default',
             price: Number(v.price) || Number(formData.price),
             stock: Number(v.stock) || 0,
-            sku: v.sku || `${autoSlug}-${v.size}`.toUpperCase(),
+            sku: v.sku || `${autoSlug}-${v.color || 'DEF'}-${v.size}`.toUpperCase().replace(/\s+/g, '-'),
           }))
         : [],
       isActive: formData.isActive,
@@ -854,15 +948,16 @@ export default function ProductForm({
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
-                      onClick={handleAutoGenerateSizes}
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold transition-all"
+                      onClick={handleGenerateVariantMatrix}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center space-x-1 cursor-pointer"
                     >
-                      Generate Standard Sizes (XS-XXL)
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Sync Matrix ({selectedColorTags.length} Colors × {selectedSizeTags.length} Sizes)</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleAddVariantRow}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center space-x-1 shadow-sm"
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold flex items-center space-x-1 cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add Row</span>
@@ -872,40 +967,149 @@ export default function ProductForm({
               </div>
 
               {formData.hasVariants && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm animate-in fade-in duration-200">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                      <tr>
-                        <th className="py-2.5 px-3">Size</th>
-                        <th className="py-2.5 px-3">Color / Style</th>
-                        <th className="py-2.5 px-3">Price (₹)</th>
-                        <th className="py-2.5 px-3">Stock Units</th>
-                        <th className="py-2.5 px-3 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200/60 bg-white">
-                      {formData.variants.map((v, i) => (
-                        <tr key={i} className="hover:bg-blue-50/20">
-                          {/* Size */}
-                          <td className="py-2 px-3">
-                            <input
-                              type="text"
-                              value={v.size}
-                              onChange={(e) => handleVariantChange(i, 'size', e.target.value.toUpperCase())}
-                              className="w-16 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-center font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500"
-                            />
-                          </td>
+                <div className="space-y-4">
+                  {/* Step A: Color & Size Multi-Select Filters */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3.5">
+                    {/* Colors Multi-Select */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-800">
+                          Select Colors for Variants ({selectedColorTags.length}):
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          Click to select multiple colors
+                        </span>
+                      </div>
 
-                          {/* Color */}
-                          <td className="py-2 px-3">
-                            <input
-                              type="text"
-                              value={v.color}
-                              placeholder="Default"
-                              onChange={(e) => handleVariantChange(i, 'color', e.target.value)}
-                              className="w-28 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 outline-none focus:bg-white focus:border-blue-500"
-                            />
-                          </td>
+                      <div className="flex flex-wrap gap-1.5 items-center">
+                        {availableColorAttributes.map((attr) => {
+                          const isSelected = selectedColorTags.includes(attr.name);
+                          return (
+                            <button
+                              key={attr.name}
+                              type="button"
+                              onClick={() => handleToggleColor(attr.name)}
+                              className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                                isSelected
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                              }`}
+                            >
+                              <span
+                                className="w-3 h-3 rounded-full border border-black/10 flex-shrink-0"
+                                style={{ backgroundColor: attr.value || '#0a0a0a' }}
+                              />
+                              <span>{attr.name}</span>
+                              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                            </button>
+                          );
+                        })}
+
+                        {/* Quick custom color add */}
+                        <div className="flex items-center space-x-1 bg-white border border-slate-200 rounded-lg px-2 py-0.5">
+                          <input
+                            type="text"
+                            value={customColorInput}
+                            onChange={(e) => setCustomColorInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddCustomColor();
+                              }
+                            }}
+                            placeholder="+ Add Color..."
+                            className="w-20 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddCustomColor}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sizes Multi-Select */}
+                    <div className="space-y-1.5 pt-2 border-t border-slate-200/60">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-800">
+                          Select Sizes for Variants ({selectedSizeTags.length}):
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          Click to select multiple sizes
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {STANDARD_SIZES.map((size) => {
+                          const isSelected = selectedSizeTags.includes(size);
+                          return (
+                            <button
+                              key={size}
+                              type="button"
+                              onClick={() => handleToggleSize(size)}
+                              className={`min-w-[40px] px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer ${
+                                isSelected
+                                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                              }`}
+                            >
+                              {size}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step B: Interactive Variants Matrix Table */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm animate-in fade-in duration-200">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                        <tr>
+                          <th className="py-2.5 px-3">Size</th>
+                          <th className="py-2.5 px-3">Color / Swatch</th>
+                          <th className="py-2.5 px-3">Price (₹)</th>
+                          <th className="py-2.5 px-3">Stock Units</th>
+                          <th className="py-2.5 px-3 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200/60 bg-white">
+                        {formData.variants.map((v, i) => (
+                          <tr key={i} className="hover:bg-blue-50/20">
+                            {/* Size */}
+                            <td className="py-2 px-3">
+                              <input
+                                type="text"
+                                value={v.size}
+                                onChange={(e) => handleVariantChange(i, 'size', e.target.value.toUpperCase())}
+                                className="w-16 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-center font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500 font-mono"
+                              />
+                            </td>
+
+                            {/* Color */}
+                            <td className="py-2 px-3">
+                              <div className="flex items-center space-x-1.5">
+                                <input
+                                  type="text"
+                                  value={v.color}
+                                  placeholder="e.g. Pitch Black"
+                                  list={`color-options-${i}`}
+                                  onChange={(e) => handleVariantChange(i, 'color', e.target.value)}
+                                  className="w-32 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 outline-none focus:bg-white focus:border-blue-500 font-semibold"
+                                />
+                                <datalist id={`color-options-${i}`}>
+                                  {selectedColorTags.map((c) => (
+                                    <option key={c} value={c} />
+                                  ))}
+                                  {availableColorAttributes.map((a) => (
+                                    <option key={a.name} value={a.name} />
+                                  ))}
+                                </datalist>
+                              </div>
+                            </td>
 
                           {/* Price for this Size */}
                           <td className="py-2 px-3">
@@ -948,8 +1152,9 @@ export default function ProductForm({
                     </tbody>
                   </table>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
 
             {/* Status & Placement Curation Flags (All 4 Flags) */}
             <div className="pt-5 border-t border-slate-200 space-y-3">
