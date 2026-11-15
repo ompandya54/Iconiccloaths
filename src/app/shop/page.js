@@ -102,7 +102,7 @@ export default function ShopPage() {
           setFilteredProducts(sanitizedApi);
           try {
             sessionStorage.setItem('iconic_shop_products', JSON.stringify(sanitizedApi));
-          } catch (e) {}
+          } catch (e) { }
         }
       } catch (err) {
         console.error('Error fetching products from API:', err);
@@ -451,8 +451,8 @@ export default function ShopPage() {
                         key={sz}
                         onClick={() => setSelectedSize(selectedSize === sz ? null : sz)}
                         className={`h-8 border flex items-center justify-center font-medium transition-all text-2xs ${selectedSize === sz
-                            ? 'bg-white text-black border-white'
-                            : 'border-white/15 text-neutral-300 hover:border-white/50'
+                          ? 'bg-white text-black border-white'
+                          : 'border-white/15 text-neutral-300 hover:border-white/50'
                           }`}
                       >
                         {sz}
@@ -482,21 +482,19 @@ export default function ShopPage() {
                             key={clr.name}
                             type="button"
                             onClick={() => setSelectedColor(isSelected ? null : clr.name)}
-                            className={`relative w-6 h-6 rounded-full border transition-all cursor-pointer ${
-                              isSelected
-                                ? 'border-white ring-2 ring-white ring-offset-2 ring-offset-black scale-110 shadow-md'
-                                : 'border-neutral-700 hover:border-neutral-400 hover:scale-105'
-                            }`}
+                            className={`relative w-6 h-6 rounded-full border transition-all cursor-pointer ${isSelected
+                              ? 'border-white ring-2 ring-white ring-offset-2 ring-offset-black scale-110 shadow-md'
+                              : 'border-neutral-700 hover:border-neutral-400 hover:scale-105'
+                              }`}
                             style={{ backgroundColor: clr.hex || '#0a0a0a' }}
                             title={clr.name}
                           >
                             {isSelected && (
                               <Check
-                                className={`w-3 h-3 absolute inset-0 m-auto stroke-[3] ${
-                                  clr.hex?.toLowerCase() === '#ffffff' || clr.name.toLowerCase().includes('white')
-                                    ? 'text-black'
-                                    : 'text-white'
-                                }`}
+                                className={`w-3 h-3 absolute inset-0 m-auto stroke-[3] ${clr.hex?.toLowerCase() === '#ffffff' || clr.name.toLowerCase().includes('white')
+                                  ? 'text-black'
+                                  : 'text-white'
+                                  }`}
                               />
                             )}
                           </button>
@@ -710,6 +708,11 @@ export default function ShopPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8">
                 {filteredProducts.map((prod, idx) => {
                   const targetId = prod.slug || prod._id || prod.id || `shop-item-${idx}`;
+                  const totalStock = prod.hasVariants && Array.isArray(prod.variants) && prod.variants.length > 0
+                    ? prod.variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
+                    : (Number(prod.stock) || 0);
+                  const isProdOut = totalStock <= 0;
+
                   return (
                     <div
                       key={targetId}
@@ -726,42 +729,64 @@ export default function ShopPage() {
                           />
                         </Link>
 
+                        {/* Status Badge */}
+                        {isProdOut ? (
+                          <span className="absolute top-3 left-3 z-10 px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider bg-red-600/90 text-white backdrop-blur-md border border-red-500/30">
+                            Sold Out
+                          </span>
+                        ) : prod.badge ? (
+                          <span className="absolute top-3 left-3 z-10 px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider bg-white text-black">
+                            {prod.badge}
+                          </span>
+                        ) : null}
+
                         {/* Top Right Wishlist Heart Icon */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleWishlist(prod.id || prod._id);
                           }}
-                          className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform"
+                          className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:scale-110 transition-transform cursor-pointer"
                         >
                           <Heart
                             className={`w-4 h-4 transition-colors ${wishlist.includes(prod.id || prod._id)
-                                ? 'fill-red-500 text-red-500'
-                                : 'text-neutral-300 hover:text-white'
+                              ? 'fill-red-500 text-red-500'
+                              : 'text-neutral-300 hover:text-white'
                               }`}
                           />
                         </button>
 
                         {/* Quick Action Overlay on Hover */}
                         <div className="absolute bottom-3 inset-x-3 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          {isProdOut ? (
+                            <div className="flex-1 py-2.5 bg-neutral-900/90 backdrop-blur-md text-neutral-400 text-xs font-bold uppercase tracking-wider border border-neutral-800 shadow-lg flex items-center justify-center gap-1.5 cursor-not-allowed select-none">
+                              <span>Out of Stock</span>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const inStockVar = prod.variants?.find((v) => Number(v.stock) > 0);
+                                const colorToAdd = inStockVar?.color || prod.colors?.[0]?.name || 'Standard';
+                                const sizeToAdd = inStockVar?.size || 'L';
+                                addToCart(prod, colorToAdd, sizeToAdd, 1);
+                              }}
+                              className="flex-1 py-2.5 bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-neutral-200 transition-colors shadow-lg flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+                            >
+                              <ShoppingBag className="w-3.5 h-3.5" />
+                              <span>Add to Bag</span>
+                            </button>
+                          )}
                           <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              addToCart(prod, prod.colors?.[0]?.name, 'L', 1);
-                            }}
-                            className="flex-1 py-2.5 bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-neutral-200 transition-colors shadow-lg flex items-center justify-center gap-1.5 active:scale-95"
-                          >
-                            <ShoppingBag className="w-3.5 h-3.5" />
-                            <span>Add to Bag</span>
-                          </button>
-                          <button
+                            type="button"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                               setQuickViewProduct(prod);
                             }}
-                            className="p-2.5 bg-black/80 backdrop-blur-md text-white border border-white/20 hover:bg-white hover:text-black transition-colors"
+                            className="p-2.5 bg-black/80 backdrop-blur-md text-white border border-white/20 hover:bg-white hover:text-black transition-colors cursor-pointer"
                             title="Quick View"
                           >
                             <Eye className="w-3.5 h-3.5" />

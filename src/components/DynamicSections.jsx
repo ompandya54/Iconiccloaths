@@ -125,21 +125,41 @@ export default function DynamicSections({ onAddToCart, onQuickView }) {
                         {onQuickView && (
                           <button
                             onClick={() => onQuickView(product)}
-                            className="flex-1 py-2 bg-black/80 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider rounded border border-white/20 hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-1"
+                            className="flex-1 py-2 bg-black/80 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider rounded border border-white/20 hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-1 cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5" />
                             <span>Quick View</span>
                           </button>
                         )}
-                        {onAddToCart && (
-                          <button
-                            onClick={() => onAddToCart(product, colorsList[0]?.name || 'Default')}
-                            className="p-2 bg-white text-black rounded hover:bg-gray-200 transition-colors"
-                            title="Add to Cart"
-                          >
-                            <ShoppingBag className="w-4 h-4" />
-                          </button>
-                        )}
+                        {onAddToCart && (() => {
+                          const totalStock = product.hasVariants && Array.isArray(product.variants) && product.variants.length > 0
+                            ? product.variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
+                            : (Number(product.stock) || 0);
+                          const isProdOut = totalStock <= 0;
+
+                          return (
+                            <button
+                              type="button"
+                              disabled={isProdOut}
+                              onClick={() => {
+                                if (!isProdOut) {
+                                  const inStockVar = product.variants?.find((v) => Number(v.stock) > 0);
+                                  const colorToAdd = inStockVar?.color || colorsList[0]?.name || 'Default';
+                                  const sizeToAdd = inStockVar?.size || 'L';
+                                  onAddToCart(product, colorToAdd, sizeToAdd);
+                                }
+                              }}
+                              className={`p-2 rounded transition-colors ${
+                                isProdOut
+                                  ? 'bg-neutral-900 text-neutral-600 border border-neutral-800 cursor-not-allowed opacity-50'
+                                  : 'bg-white text-black hover:bg-gray-200 cursor-pointer'
+                              }`}
+                              title={isProdOut ? 'Out of Stock' : 'Add to Bag'}
+                            >
+                              <ShoppingBag className="w-4 h-4" />
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
 

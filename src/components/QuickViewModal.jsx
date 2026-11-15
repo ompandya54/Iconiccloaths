@@ -10,10 +10,58 @@ export default function QuickViewModal({ product, onClose, onAddToCart }) {
 
   if (!product) return null;
 
-  const colorObj = product.colors[selectedColorIdx] || product.colors[0];
+  const colorObj = (Array.isArray(product.colors) && product.colors[selectedColorIdx]) || product.colors?.[0] || {
+    name: 'Standard',
+    image: product.image || '/images/prod_minimal.jpg',
+  };
+
+  // Available Sizes
+  const availableSizes = (() => {
+    const list = [];
+    if (Array.isArray(product.sizes) && product.sizes.length > 0) {
+      product.sizes.forEach((s) => { if (s && !list.includes(s)) list.push(s); });
+    }
+    if (Array.isArray(product.variants) && product.variants.length > 0) {
+      product.variants.forEach((v) => { if (v.size && !list.includes(v.size)) list.push(v.size); });
+    }
+    return list.length > 0 ? list : ['S', 'M', 'L', 'XL'];
+  })();
+
+  // Stock check for active color and selected size
+  let currentStock = Number(product.stock) || 0;
+  if (product.hasVariants && Array.isArray(product.variants) && product.variants.length > 0) {
+    const cLower = (colorObj?.name || 'default').toLowerCase().trim();
+    const sUpper = (selectedSize || '').toUpperCase().trim();
+    const vMatch = product.variants.find((v) => {
+      const vc = (v.color || 'default').toLowerCase().trim();
+      const vs = (v.size || '').toUpperCase().trim();
+      return vc === cLower && vs === sUpper;
+    }) || product.variants.find((v) => {
+      const vc = (v.color || '').toLowerCase().trim();
+      const vs = (v.size || '').toUpperCase().trim();
+      return (!vc || vc === 'default') && vs === sUpper;
+    });
+    currentStock = vMatch ? (Number(vMatch.stock) || 0) : 0;
+  }
+  const isOutOfStock = currentStock <= 0;
+
+  const getIsSizeInStock = (size) => {
+    if (!product.hasVariants || !Array.isArray(product.variants) || product.variants.length === 0) {
+      return Number(product.stock) > 0;
+    }
+    const cLower = (colorObj?.name || 'default').toLowerCase().trim();
+    const sUpper = (size || '').toUpperCase().trim();
+    const match = product.variants.find((v) => {
+      const vc = (v.color || 'default').toLowerCase().trim();
+      const vs = (v.size || '').toUpperCase().trim();
+      return (vc === cLower || vc === 'default') && vs === sUpper;
+    });
+    return match ? Number(match.stock) > 0 : false;
+  };
 
   const handleAdd = () => {
-    onAddToCart(product, colorObj.name, selectedSize);
+    if (isOutOfStock) return;
+    onAddToCart({ ...product, maxStock: currentStock }, colorObj.name, selectedSize, 1);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
@@ -87,33 +135,47 @@ export default function QuickViewModal({ product, onClose, onAddToCart }) {
                 Size: <span className="text-white">{selectedSize}</span>
               </label>
               <div className="flex items-center space-x-2">
-                {['S', 'M', 'L', 'XL'].map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`w-10 h-10 rounded-lg text-xs font-bold transition-all border ${
-                      selectedSize === size
-                        ? 'bg-white text-black border-white'
-                        : 'bg-white/5 text-gray-300 border-white/10 hover:border-white/30'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+                {availableSizes.map((size) => {
+                  const inStock = getIsSizeInStock(size);
+                  return (
+                    <button
+                      key={size}
+                      type="button"
+                      disabled={!inStock}
+                      onClick={() => setSelectedSize(size)}
+                      className={`w-10 h-10 rounded-lg text-xs font-bold transition-all border ${
+                        !inStock
+                          ? 'bg-neutral-950/40 text-neutral-600 border-white/5 cursor-not-allowed line-through opacity-30 select-none'
+                          : selectedSize === size
+                          ? 'bg-white text-black border-white cursor-pointer'
+                          : 'bg-white/5 text-gray-300 border-white/10 hover:border-white/30 cursor-pointer'
+                      }`}
+                      title={!inStock ? `${size} is out of stock` : `Select ${size}`}
+                    >
+                      {size}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
 
           {/* Add to Bag CTA */}
           <button
+            type="button"
+            disabled={isOutOfStock}
             onClick={handleAdd}
             className={`w-full py-4 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center space-x-2 ${
-              added
-                ? 'bg-green-600 text-white'
-                : 'bg-white text-black hover:bg-gray-200'
+              isOutOfStock
+                ? 'bg-neutral-900 text-neutral-500 border border-neutral-800 cursor-not-allowed opacity-60'
+                : added
+                ? 'bg-emerald-600 text-white cursor-pointer'
+                : 'bg-white text-black hover:bg-gray-200 cursor-pointer'
             }`}
           >
-            {added ? (
+            {isOutOfStock ? (
+              <span>OUT OF STOCK</span>
+            ) : added ? (
               <>
                 <Check className="w-4 h-4" />
                 <span>ADDED TO BAG</span>

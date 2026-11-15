@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 export default function ProductDetailPage() {
-  const { addToCart, openCart } = useCart();
+  const { addToCart, openCart, cartItems } = useCart();
   const params = useParams();
   const router = useRouter();
   const productId = params?.id;
@@ -148,31 +148,39 @@ export default function ProductDetailPage() {
     if (!product?.hasVariants || !Array.isArray(product?.variants) || product.variants.length === 0) {
       return null;
     }
-    const cLower = (colorName || 'default').toLowerCase();
-    const sUpper = (sizeName || '').toUpperCase();
+    const cLower = (colorName || 'default').toLowerCase().trim();
+    const sUpper = (sizeName || '').toUpperCase().trim();
     return (
       product.variants.find((v) => {
-        const vc = (v.color || 'default').toLowerCase();
-        const vs = (v.size || '').toUpperCase();
+        const vc = (v.color || 'default').toLowerCase().trim();
+        const vs = (v.size || '').toUpperCase().trim();
         return vc === cLower && vs === sUpper;
       }) ||
-      product.variants.find((v) => (v.size || '').toUpperCase() === sUpper) ||
+      product.variants.find((v) => {
+        const vc = (v.color || '').toLowerCase().trim();
+        const vs = (v.size || '').toUpperCase().trim();
+        return (!vc || vc === 'default') && vs === sUpper;
+      }) ||
       null
     );
   };
 
   // Cart Add Handler
   const handleAddToCart = () => {
-    if (!product) return;
+    if (!product || isOutOfStock) return;
     const variant = getActiveVariant(selectedColor?.name, selectedSize);
-    const stock = variant ? Number(variant.stock) : (Number(product.stock) || 0);
-    if (stock <= 0) return;
-
     const price = variant?.price ? Number(variant.price) : Number(product.price);
-    const productToAdd = { ...product, price };
-    addToCart(productToAdd, selectedColor?.name, selectedSize, Math.min(quantity, Math.max(1, stock)));
-    setAddedAnimation(true);
-    setTimeout(() => setAddedAnimation(false), 2000);
+    const productToAdd = { ...product, price, maxStock: currentStock };
+    const added = addToCart(
+      productToAdd,
+      selectedColor?.name,
+      selectedSize,
+      Math.min(quantity, Math.max(1, currentStock))
+    );
+    if (added !== false) {
+      setAddedAnimation(true);
+      setTimeout(() => setAddedAnimation(false), 2000);
+    }
   };
 
   if (loading) {
@@ -272,23 +280,19 @@ export default function ProductDetailPage() {
     if (!product) return false;
 
     if (product.hasVariants && Array.isArray(product.variants) && product.variants.length > 0) {
+      const sUpper = (size || '').toUpperCase().trim();
       const match = product.variants.find((v) => {
-        const vColor = (v.color || 'default').toLowerCase();
-        const vSize = (v.size || '').toUpperCase();
-        return (vColor === activeColorName || vColor === 'default') && vSize === size.toUpperCase();
+        const vColor = (v.color || 'default').toLowerCase().trim();
+        const vSize = (v.size || '').toUpperCase().trim();
+        return (vColor === activeColorName || vColor === 'default') && vSize === sUpper;
       });
 
       if (match) {
         return Number(match.stock) > 0;
       }
 
-      // If variant doesn't exist for this (color, size), check if size exists in other colors
-      const existsInOther = product.variants.some(
-        (v) => (v.size || '').toUpperCase() === size.toUpperCase()
-      );
-      if (existsInOther) return false;
-
-      return Number(product.stock) > 0;
+      // If variant doesn't exist for this (color, size), it is not available in stock
+      return false;
     }
 
     return Number(product.stock) > 0;
@@ -297,8 +301,29 @@ export default function ProductDetailPage() {
   // Active Variant & Pricing
   const activeVariant = getActiveVariant(selectedColor?.name, selectedSize);
   const currentPrice = activeVariant?.price ? Number(activeVariant.price) : Number(product?.price || 0);
-  const currentStock = activeVariant ? Number(activeVariant.stock) : (Number(product?.stock) || 0);
+  const currentStock = product?.hasVariants && Array.isArray(product?.variants) && product.variants.length > 0
+    ? (activeVariant ? Number(activeVariant.stock) || 0 : 0)
+    : (Number(product?.stock) || 0);
   const isOutOfStock = currentStock <= 0;
+
+  // Track if this exact variant is already at maximum in cart
+  const inCartItem = cartItems?.find(
+    (item) =>
+      item.id === (product?.id || product?._id) &&
+      (item.selectedColor || '').toLowerCase() === (selectedColor?.name || 'default').toLowerCase() &&
+      (item.size || '').toUpperCase() === (selectedSize || '').toUpperCase()
+  );
+  const inCartQuantity = inCartItem?.quantity || 0;
+  const isMaxStockInCart = !isOutOfStock && inCartQuantity >= currentStock;
+
+  // Clamp selected quantity when variant changes or stock updates
+  useEffect(() => {
+    if (currentStock <= 0) {
+      setQuantity(1);
+    } else if (quantity > currentStock) {
+      setQuantity(currentStock);
+    }
+  }, [currentStock]);
 
   // Handle switching colors with automatic size in-stock fallback
   const handleColorSelect = (colorObj) => {
@@ -574,7 +599,7 @@ export default function ProductDetailPage() {
                   type="button"
                   disabled={isOutOfStock || quantity <= 1}
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-2.5 h-full text-neutral-400 hover:text-white transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  className="px-2.5 h-full text-neutral-400 hover:text-white transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
@@ -585,7 +610,8 @@ export default function ProductDetailPage() {
                   type="button"
                   disabled={isOutOfStock || quantity >= currentStock}
                   onClick={() => setQuantity((prev) => Math.min(prev + 1, currentStock))}
-                  className="px-2.5 h-full text-neutral-400 hover:text-white transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  className="px-2.5 h-full text-neutral-400 hover:text-white transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
+                  title={quantity >= currentStock ? `Maximum stock available (${currentStock}) reached` : 'Increase quantity'}
                 >
                   <Plus className="w-3 h-3" />
                 </button>
@@ -594,18 +620,22 @@ export default function ProductDetailPage() {
               {/* Primary Add To Cart Button */}
               <button
                 type="button"
-                disabled={isOutOfStock}
+                disabled={isOutOfStock || isMaxStockInCart}
                 onClick={handleAddToCart}
-                className={`flex-1 h-11 text-xs font-bold uppercase tracking-[0.15em] font-syne transition-all flex items-center justify-center gap-2 border active:scale-98 ${
+                className={`flex-1 h-11 text-xs font-bold uppercase tracking-[0.15em] font-syne transition-all flex items-center justify-center gap-2 border ${
                   isOutOfStock
                     ? 'bg-neutral-900 text-neutral-500 border-neutral-800 cursor-not-allowed opacity-60'
+                    : isMaxStockInCart
+                    ? 'bg-neutral-900 text-amber-400 border-amber-500/30 cursor-not-allowed'
                     : addedAnimation
                     ? 'bg-emerald-600 text-white border-emerald-500 cursor-pointer'
-                    : 'bg-white text-black border-white hover:bg-neutral-200 cursor-pointer'
+                    : 'bg-white text-black border-white hover:bg-neutral-200 cursor-pointer active:scale-98'
                 }`}
               >
                 {isOutOfStock ? (
                   <span>Out of Stock</span>
+                ) : isMaxStockInCart ? (
+                  <span>Max in Bag ({inCartQuantity})</span>
                 ) : addedAnimation ? (
                   <>
                     <Check className="w-4 h-4" /> Added To Bag!

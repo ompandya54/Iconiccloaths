@@ -58,17 +58,53 @@ export function CartProvider({ children }) {
     const itemImage = typeof rawImage === 'string' ? rawImage.replace(/^http:\/\//i, 'https://') : '/images/prod_minimal.jpg';
     const itemPrice = Number(product.price) || 0;
 
+    // Determine available stock for this variant/product
+    let availableStock = Number(product.stock) || 0;
+    if (product.maxStock !== undefined && product.maxStock !== null) {
+      availableStock = Number(product.maxStock);
+    } else if (product.hasVariants && Array.isArray(product.variants) && product.variants.length > 0) {
+      const cLower = (colorName || 'default').toLowerCase().trim();
+      const sUpper = (size || '').toUpperCase().trim();
+      const vMatch = product.variants.find((v) => {
+        const vc = (v.color || 'default').toLowerCase().trim();
+        const vs = (v.size || '').toUpperCase().trim();
+        return vc === cLower && vs === sUpper;
+      }) || product.variants.find((v) => {
+        const vc = (v.color || '').toLowerCase().trim();
+        const vs = (v.size || '').toUpperCase().trim();
+        return (!vc || vc === 'default') && vs === sUpper;
+      });
+
+      availableStock = vMatch ? (Number(vMatch.stock) || 0) : 0;
+    }
+
+    // If out of stock, reject adding to cart
+    if (availableStock <= 0) {
+      console.warn(`Cannot add ${product.name} (${colorName}, ${size}) to cart: Out of stock`);
+      return false;
+    }
+
     setCartItems((prev) => {
       const existingIdx = prev.findIndex(
         (item) => item.id === id && item.selectedColor === colorName && item.size === size
       );
 
       if (existingIdx > -1) {
+        const currentQty = prev[existingIdx].quantity || 0;
+        const maxStock = prev[existingIdx].maxStock !== undefined ? prev[existingIdx].maxStock : availableStock;
+        
+        // Cannot exceed available stock
+        if (currentQty >= maxStock) {
+          return prev;
+        }
+
         const updated = [...prev];
-        updated[existingIdx].quantity += quantity;
+        updated[existingIdx].quantity = Math.min(maxStock, currentQty + quantity);
+        updated[existingIdx].maxStock = maxStock;
         return updated;
       }
 
+      const clampedQty = Math.min(availableStock, Math.max(1, quantity));
       return [
         ...prev,
         {
@@ -77,7 +113,8 @@ export function CartProvider({ children }) {
           price: itemPrice,
           selectedColor: colorName,
           size: size,
-          quantity: quantity,
+          quantity: clampedQty,
+          maxStock: availableStock,
           image: itemImage,
         },
       ];
@@ -85,6 +122,7 @@ export function CartProvider({ children }) {
 
     // Auto-open drawer for feedback
     setIsCartOpen(true);
+    return true;
   };
 
   // Update Item Quantity
@@ -100,7 +138,11 @@ export function CartProvider({ children }) {
           item.id === id &&
           item.selectedColor === selectedColor &&
           (!size || item.size === size);
-        return isMatch ? { ...item, quantity: newQty } : item;
+        if (!isMatch) return item;
+
+        const maxStock = item.maxStock !== undefined ? Number(item.maxStock) : Infinity;
+        const clampedQty = Math.min(newQty, maxStock);
+        return { ...item, quantity: clampedQty };
       })
     );
   };

@@ -138,7 +138,7 @@ export default function CartDrawer({
                       </p>
 
                       {/* Quantity Controls */}
-                      <div className="flex items-center space-x-3 mt-2">
+                      <div className="flex items-center space-x-2 mt-2">
                         <button
                           type="button"
                           onClick={() => onUpdateQuantity && onUpdateQuantity(item.id, item.selectedColor, item.size, item.quantity - 1)}
@@ -146,14 +146,32 @@ export default function CartDrawer({
                         >
                           -
                         </button>
-                        <span className="text-xs font-bold text-white">{item.quantity}</span>
-                        <button
-                          type="button"
-                          onClick={() => onUpdateQuantity && onUpdateQuantity(item.id, item.selectedColor, item.size, item.quantity + 1)}
-                          className="w-5 h-5 rounded bg-white/10 text-white flex items-center justify-center text-xs hover:bg-white/20 active:scale-95 cursor-pointer"
-                        >
-                          +
-                        </button>
+                        <span className="text-xs font-bold text-white min-w-[16px] text-center">{item.quantity}</span>
+                        {(() => {
+                          const isAtMaxStock = item.maxStock !== undefined && item.quantity >= item.maxStock;
+                          return (
+                            <>
+                              <button
+                                type="button"
+                                disabled={isAtMaxStock}
+                                onClick={() => onUpdateQuantity && onUpdateQuantity(item.id, item.selectedColor, item.size, item.quantity + 1)}
+                                className={`w-5 h-5 rounded flex items-center justify-center text-xs transition-all ${
+                                  isAtMaxStock
+                                    ? 'opacity-25 cursor-not-allowed bg-white/5 text-gray-500'
+                                    : 'bg-white/10 text-white hover:bg-white/20 active:scale-95 cursor-pointer'
+                                }`}
+                                title={isAtMaxStock ? `Maximum stock available (${item.maxStock}) reached` : 'Increase quantity'}
+                              >
+                                +
+                              </button>
+                              {isAtMaxStock && (
+                                <span className="text-[10px] text-amber-400 font-mono tracking-tight ml-1">
+                                  (Max {item.maxStock})
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
 
