@@ -10,12 +10,29 @@ export default function DynamicSections({ onAddToCart, onQuickView }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 1. Instant 0ms Paint from sessionStorage cache if user visited before
+    try {
+      const cached = sessionStorage.getItem('iconic_active_sections');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSections(parsed);
+          setLoading(false);
+        }
+      }
+    } catch (e) {
+      // Graceful fallback
+    }
+
     async function loadSections() {
       try {
         const res = await getActiveSections();
-        const list = res?.sections || res?.data || (Array.isArray(res) ? res : []);
+        const list = res?.data || res?.sections || (Array.isArray(res) ? res : []);
         if (Array.isArray(list) && list.length > 0) {
           setSections(list);
+          try {
+            sessionStorage.setItem('iconic_active_sections', JSON.stringify(list));
+          } catch (e) {}
         }
       } catch (err) {
         console.error('Error loading dynamic sections:', err);

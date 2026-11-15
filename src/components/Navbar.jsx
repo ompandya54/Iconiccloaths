@@ -116,6 +116,7 @@ export default function Navbar({
           <nav className="hidden md:flex items-center space-x-10 absolute left-1/2 -translate-x-1/2 z-10">
             <Link
               href="/"
+              prefetch={false}
               className={`text-xs font-bold uppercase tracking-widest pb-1 transition-colors ${activePage === 'home'
                 ? 'text-white border-b-2 border-white'
                 : 'text-gray-300 hover:text-white border-b-2 border-transparent hover:border-gray-500'
@@ -125,6 +126,7 @@ export default function Navbar({
             </Link>
             <Link
               href="/shop"
+              prefetch={false}
               className={`text-xs font-bold uppercase tracking-widest pb-1 transition-colors ${activePage === 'shop'
                 ? 'text-white border-b-2 border-white'
                 : 'text-gray-300 hover:text-white border-b-2 border-transparent hover:border-gray-500'
@@ -251,6 +253,7 @@ export default function Navbar({
               ) : (
                 <Link
                   href="/login"
+                  prefetch={false}
                   aria-label="Sign In"
                   title="Sign In / Register"
                   className="text-white hover:text-gray-300 transition-colors p-1 flex items-center"

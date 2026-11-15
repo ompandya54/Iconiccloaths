@@ -12,13 +12,29 @@ export default function BestsellersSection({ onAddToCart, onQuickView }) {
   const [wishlist, setWishlist] = useState({});
 
   useEffect(() => {
+    // 1. Instant 0ms Paint from sessionStorage cache if user visited before
+    try {
+      const cached = sessionStorage.getItem('iconic_bestsellers');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setProductsList(parsed);
+          setLoading(false);
+        }
+      }
+    } catch (e) {
+      // Graceful fallback
+    }
+
     async function loadLiveBestsellers() {
       try {
-        setLoading(true);
         const res = await getBestsellers(8);
-        const list = res?.products || res?.data || (Array.isArray(res) ? res : []);
+        const list = res?.data || res?.products || (Array.isArray(res) ? res : []);
         if (Array.isArray(list) && list.length > 0) {
           setProductsList(list);
+          try {
+            sessionStorage.setItem('iconic_bestsellers', JSON.stringify(list));
+          } catch (e) {}
         }
       } catch (err) {
         console.error('Failed to load bestsellers from API:', err);
