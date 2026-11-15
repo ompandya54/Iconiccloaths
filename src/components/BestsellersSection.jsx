@@ -34,7 +34,7 @@ export default function BestsellersSection({ onAddToCart, onQuickView }) {
           setProductsList(list);
           try {
             sessionStorage.setItem('iconic_bestsellers', JSON.stringify(list));
-          } catch (e) {}
+          } catch (e) { }
         }
       } catch (err) {
         console.error('Failed to load bestsellers from API:', err);
@@ -56,7 +56,7 @@ export default function BestsellersSection({ onAddToCart, onQuickView }) {
   return (
     <section id="shop" className="pt-6 sm:pt-10 pb-16 sm:pb-24 bg-[#08080a] relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Header Bar: BESTSELLERS - OUR ICONS */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
           <div>
@@ -189,11 +189,10 @@ export default function BestsellersSection({ onAddToCart, onQuickView }) {
                             key={color.name || idx}
                             onClick={() => handleColorChange(prodKey, idx)}
                             aria-label={`Select ${color.name}`}
-                            className={`w-3.5 h-3.5 rounded-full border transition-all ${
-                              activeColorIdx === idx
+                            className={`w-3.5 h-3.5 rounded-full border transition-all ${activeColorIdx === idx
                                 ? 'ring-1 ring-white ring-offset-1 ring-offset-[#08080a] border-transparent scale-110'
                                 : 'border-white/30 opacity-70 hover:opacity-100'
-                            }`}
+                              }`}
                             style={{ backgroundColor: color.hex || '#0a0a0a' }}
                           />
                         ))}
