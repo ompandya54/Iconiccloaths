@@ -59,25 +59,38 @@ export default function ShopPage() {
     setSectionsOpen((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  // Fetch Products with Instant 0ms sessionStorage Hydration & Background Sync
+  // Fetch Products with Instant 0ms sessionStorage Hydration & Pure Session Caching
   useEffect(() => {
-    // 1. Instant 0ms Paint from sessionStorage cache if visited in this session
-    try {
-      const cached = sessionStorage.getItem('iconic_shop_products');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setProducts(parsed);
-          setFilteredProducts(parsed);
-          setLoading(false);
+    // Check if the user reloaded/hard-refreshed the page -> clear session to fetch fresh from server
+    const isReload =
+      typeof window !== 'undefined' &&
+      performance.getEntriesByType?.('navigation')?.[0]?.type === 'reload';
+
+    if (isReload) {
+      try {
+        sessionStorage.removeItem('iconic_shop_products');
+      } catch (e) {}
+    } else {
+      // 1. Instant 0ms Paint from sessionStorage cache -> SKIP network call completely while navigating!
+      try {
+        const cached = sessionStorage.getItem('iconic_shop_products');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setProducts(parsed);
+            setFilteredProducts(parsed);
+            setLoading(false);
+            return; // <-- Pure session: SKIP network call!
+          }
         }
+      } catch (e) {
+        // Graceful fallback
       }
-    } catch (e) {
-      // Graceful fallback
     }
 
     const fetchApiProducts = async () => {
       try {
+        setLoading(true);
         const data = await getProducts({ limit: 50 });
         const rawList = data?.data || data?.products;
         if (data && data.success && Array.isArray(rawList)) {

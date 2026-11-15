@@ -12,22 +12,33 @@ export default function BestsellersSection({ onAddToCart, onQuickView }) {
   const [wishlist, setWishlist] = useState({});
 
   useEffect(() => {
-    // 1. Instant 0ms Paint from sessionStorage cache if user visited before
-    try {
-      const cached = sessionStorage.getItem('iconic_bestsellers');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setProductsList(parsed);
-          setLoading(false);
+    // Check if the user reloaded/hard-refreshed the page -> clear session to fetch fresh from server
+    const isReload =
+      typeof window !== 'undefined' &&
+      performance.getEntriesByType?.('navigation')?.[0]?.type === 'reload';
+
+    if (isReload) {
+      try {
+        sessionStorage.removeItem('iconic_bestsellers');
+      } catch (e) {}
+    } else {
+      // Instant 0ms Paint from sessionStorage & SKIP the network call completely while navigating!
+      try {
+        const cached = sessionStorage.getItem('iconic_bestsellers');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setProductsList(parsed);
+            setLoading(false);
+            return; // <-- Pure session: SKIP network call!
+          }
         }
-      }
-    } catch (e) {
-      // Graceful fallback
+      } catch (e) {}
     }
 
     async function loadLiveBestsellers() {
       try {
+        setLoading(true);
         const res = await getBestsellers(8);
         const list = res?.data || res?.products || (Array.isArray(res) ? res : []);
         if (Array.isArray(list) && list.length > 0) {

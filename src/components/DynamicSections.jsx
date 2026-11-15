@@ -10,22 +10,33 @@ export default function DynamicSections({ onAddToCart, onQuickView }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Instant 0ms Paint from sessionStorage cache if user visited before
-    try {
-      const cached = sessionStorage.getItem('iconic_active_sections');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setSections(parsed);
-          setLoading(false);
+    // Check if user reloaded/hard-refreshed the page -> clear session to fetch fresh from server
+    const isReload =
+      typeof window !== 'undefined' &&
+      performance.getEntriesByType?.('navigation')?.[0]?.type === 'reload';
+
+    if (isReload) {
+      try {
+        sessionStorage.removeItem('iconic_active_sections');
+      } catch (e) {}
+    } else {
+      // Instant 0ms Paint from sessionStorage & SKIP the network call completely while navigating!
+      try {
+        const cached = sessionStorage.getItem('iconic_active_sections');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSections(parsed);
+            setLoading(false);
+            return; // <-- Pure session: SKIP network call!
+          }
         }
-      }
-    } catch (e) {
-      // Graceful fallback
+      } catch (e) {}
     }
 
     async function loadSections() {
       try {
+        setLoading(true);
         const res = await getActiveSections();
         const list = res?.data || res?.sections || (Array.isArray(res) ? res : []);
         if (Array.isArray(list) && list.length > 0) {
