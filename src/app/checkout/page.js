@@ -131,10 +131,18 @@ export default function CheckoutPage() {
         setCompletedOrder(orderData);
         clearCart();
       } else {
-        setOrderError(res?.message || 'Failed to place order. Please try again.');
+        const errorMsg = res?.message || 'Failed to place order. Please try again.';
+        setOrderError(errorMsg);
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 120, behavior: 'smooth' });
+        }
       }
     } catch (err) {
-      setOrderError(err.message || 'Server error while creating order.');
+      const errorMsg = err.message || 'Server error while creating order.';
+      setOrderError(errorMsg);
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 120, behavior: 'smooth' });
+      }
     } finally {
       setPlacingOrder(false);
     }
@@ -503,6 +511,21 @@ export default function CheckoutPage() {
                 <span>₹{finalTotal}</span>
               </div>
             </div>
+
+            {/* Prominent Out of Stock / Inventory Alert Banner */}
+            {orderError && (
+              <div className="p-4 rounded-2xl bg-red-500/15 border-2 border-red-500/40 text-red-300 text-xs flex items-start space-x-3 shadow-lg shadow-red-500/10">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-bold text-red-400 uppercase tracking-wider text-[11px] mb-1">
+                    {orderError.includes('OUT OF STOCK') || orderError.includes('SHORTAGE')
+                      ? 'Inventory Alert'
+                      : 'Order Alert'}
+                  </p>
+                  <p className="leading-relaxed font-medium text-white/95">{orderError}</p>
+                </div>
+              </div>
+            )}
 
             {/* Place Order CTA Button */}
             <button
