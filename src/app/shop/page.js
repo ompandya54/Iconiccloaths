@@ -59,19 +59,37 @@ export default function ShopPage() {
     setSectionsOpen((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  // Fetch Products from Centralized API Service
+  // Fetch Products with Instant 0ms sessionStorage Hydration & Background Sync
   useEffect(() => {
+    // 1. Instant 0ms Paint from sessionStorage cache if visited in this session
+    try {
+      const cached = sessionStorage.getItem('iconic_shop_products');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setProducts(parsed);
+          setFilteredProducts(parsed);
+          setLoading(false);
+        }
+      }
+    } catch (e) {
+      // Graceful fallback
+    }
+
     const fetchApiProducts = async () => {
       try {
-        setLoading(true);
         const data = await getProducts({ limit: 50 });
-        if (data && data.success && data.products) {
-          const sanitizedApi = data.products.map((p) => ({
+        const rawList = data?.data || data?.products;
+        if (data && data.success && Array.isArray(rawList)) {
+          const sanitizedApi = rawList.map((p) => ({
             ...p,
             image: p.image || p.colors?.[0]?.image || '/images/prod_minimal.jpg',
           }));
           setProducts(sanitizedApi);
           setFilteredProducts(sanitizedApi);
+          try {
+            sessionStorage.setItem('iconic_shop_products', JSON.stringify(sanitizedApi));
+          } catch (e) {}
         }
       } catch (err) {
         console.error('Error fetching products from API:', err);
