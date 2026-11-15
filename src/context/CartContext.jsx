@@ -92,7 +92,7 @@ export function CartProvider({ children }) {
       if (existingIdx > -1) {
         const currentQty = prev[existingIdx].quantity || 0;
         const maxStock = prev[existingIdx].maxStock !== undefined ? prev[existingIdx].maxStock : availableStock;
-        
+
         // Cannot exceed available stock
         if (currentQty >= maxStock) {
           return prev;
