@@ -183,37 +183,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col font-sans">
-        <div className="flex-1 flex flex-col items-center justify-center py-32">
-          <div className="w-10 h-10 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4" />
-          <p className="text-xs uppercase tracking-widest text-neutral-400 font-syne animate-pulse">
-            Loading Garment Specs...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !product) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col font-sans">
-        <div className="flex-1 flex flex-col items-center justify-center py-32 px-4 text-center">
-          <Info className="w-10 h-10 text-neutral-600 mb-4" />
-          <h2 className="text-xl font-bold uppercase tracking-wider font-syne mb-2">Product Not Found</h2>
-          <p className="text-neutral-400 text-xs mb-8">The requested streetwear piece could not be located in our current drop.</p>
-          <Link
-            href="/shop"
-            className="px-6 py-2.5 bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-neutral-200 transition-colors inline-flex items-center gap-2"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Return to Shop
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   // Extract all distinct colors from product.colors and product.variants
   const colorsList = (() => {
     if (!product) return [];
@@ -344,7 +313,7 @@ export default function ProductDetailPage() {
       });
 
       if (!isCurrentSizeInStock) {
-        const firstAvailable = product.variants.find((v) => {
+        const firstAvailable = product?.variants?.find((v) => {
           const vColor = (v.color || 'default').toLowerCase();
           return (vColor === newColorName || vColor === 'default') && Number(v.stock) > 0;
         });
@@ -357,20 +326,51 @@ export default function ProductDetailPage() {
   };
 
   const rawImages = colorsList.map((c) => c?.image).filter(Boolean);
-  if (product.image && !rawImages.includes(product.image)) {
+  if (product?.image && !rawImages.includes(product.image)) {
     rawImages.unshift(product.image);
   }
-  if (Array.isArray(product.images)) {
+  if (Array.isArray(product?.images)) {
     product.images.forEach((img) => {
       if (img && !rawImages.includes(img)) rawImages.push(img);
     });
   }
-  const images = rawImages.length > 0 ? rawImages : [product.image || '/images/prod_minimal.jpg'];
+  const images = rawImages.length > 0 ? rawImages : [product?.image || '/images/prod_minimal.jpg'];
 
   const discountPercent =
-    product.originalPrice && Number(product.originalPrice) > currentPrice
+    product?.originalPrice && Number(product.originalPrice) > currentPrice
       ? Math.round(((Number(product.originalPrice) - currentPrice) / Number(product.originalPrice)) * 100)
       : 15;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col font-sans">
+        <div className="flex-1 flex flex-col items-center justify-center py-32">
+          <div className="w-10 h-10 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4" />
+          <p className="text-xs uppercase tracking-widest text-neutral-400 font-syne animate-pulse">
+            Loading Garment Specs...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col font-sans">
+        <div className="flex-1 flex flex-col items-center justify-center py-32 px-4 text-center">
+          <Info className="w-10 h-10 text-neutral-600 mb-4" />
+          <h2 className="text-xl font-bold uppercase tracking-wider font-syne mb-2">Product Not Found</h2>
+          <p className="text-neutral-400 text-xs mb-8">The requested streetwear piece could not be located in our current drop.</p>
+          <Link
+            href="/shop"
+            className="px-6 py-2.5 bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-neutral-200 transition-colors inline-flex items-center gap-2"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Return to Shop
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col font-sans selection:bg-white selection:text-black">
